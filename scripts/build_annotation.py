@@ -37,7 +37,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.data.targets import discordance_fraction, load_coupling_components
+from src.data.targets import discordance_modes, load_coupling_components
 from src.utils.config import load_config
 from src.utils.manifest import manifest
 
@@ -56,7 +56,7 @@ PARCELLATIONS = ["schaefer200x7", "schaefer400x7", "dk68"]
 # STILL OPEN - AHBA coverage is computed from 5 of 6 donors, because 15496 is
 # 404 upstream. ahba_n_samples is the only remaining provisional column and the
 # only thing between here and 1.0.0.
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 
 # Per-column stability. Someone building on this needs to know which columns
 # they can depend on and which may move, at the granularity of the column
@@ -77,6 +77,8 @@ COLUMN_STABILITY: dict[str, str] = {
     "baseline_cmro2": "stable",
     "coupling_n_angle": "stable",
     "discordance_risk": "stable",
+    "discordance_risk_extraction": "stable",
+    "discordance_risk_overshoot": "stable",
     "discordance_risk_n": "stable",
     "dropout_snr_coverage": "stable",
     "venous_partial_volume": "stable",
@@ -119,10 +121,20 @@ COLUMNS: dict[str, tuple[str, str, str]] = {
         "fraction",
         "Fraction of subjects in whom BOLD and CMRO2 move in opposite directions, i.e. coupling ratio n < 1. Uses the first-order approximation sign(dBOLD) = sign(dCBF - dCMRO2). See the data dictionary before using.",
     ),
+    "discordance_risk_extraction": (
+        "number",
+        "fraction",
+        "Fraction of subjects in the EXTRACTION mode: CMRO2 rises while BOLD falls, i.e. oxygen demand goes up and flow fails to keep pace, so the tissue raises its extraction fraction. This is the mode the Epp et al. mechanism concerns and the one a capillary-density hypothesis predicts. Use THIS column, not discordance_risk, for vascular hypotheses.",
+    ),
+    "discordance_risk_overshoot": (
+        "number",
+        "fraction",
+        "Fraction of subjects in the OVERSHOOT mode: CMRO2 falls while BOLD rises, i.e. flow is delivered in excess of falling demand. Same arithmetic as extraction, different physiology.",
+    ),
     "discordance_risk_n": (
         "integer",
         "",
-        "Number of subjects contributing to discordance_risk.",
+        "Number of subjects contributing to the discordance columns.",
     ),
     "dropout_snr_coverage": (
         "number",
@@ -223,7 +235,7 @@ def build(cfg, with_ahba: bool) -> tuple[pd.DataFrame, list[str]]:
         t = pd.read_csv(src)
 
         d_cbf, d_cmro2, subs, _ = load_coupling_components(parc, masked=True)
-        frac, n_used = discordance_fraction(d_cbf, d_cmro2)
+        modes = discordance_modes(d_cbf, d_cmro2)
 
         df = pd.DataFrame(
             {
@@ -235,8 +247,10 @@ def build(cfg, with_ahba: bool) -> tuple[pd.DataFrame, list[str]]:
                 "baseline_cbf": t["baseline_cbf"],
                 "baseline_cmro2": t["baseline_cmro2"],
                 "coupling_n_angle": t["coupling_n_angle"],
-                "discordance_risk": frac,
-                "discordance_risk_n": n_used,
+                "discordance_risk": modes.total,
+                "discordance_risk_extraction": modes.extraction,
+                "discordance_risk_overshoot": modes.overshoot,
+                "discordance_risk_n": modes.n_used,
                 "dropout_snr_coverage": t["dropout_snr_coverage"],
                 "venous_partial_volume": t["venous_partial_volume"],
                 "map_reliability_coupling": t["coupling_n_map_reliability"],
@@ -346,6 +360,26 @@ def write_dictionary(path: Path, df: pd.DataFrame, cfg, donors: list[str]) -> No
         "Sanity check that it behaves: the default mode network carries the",
         "highest mean discordance of the seven Yeo networks at Schaefer-200,",
         "which is the concentration the source paper reports.",
+        "",
+        "### Use the mode columns, not the total",
+        "",
+        "`discordance_risk` sums two mechanistically different things, and the",
+        "split on this data is close to even (53% / 47%):",
+        "",
+        "- **`discordance_risk_extraction`** — CMRO2 rises while BOLD falls.",
+        "  Demand goes up, flow fails to keep pace, and the tissue compensates by",
+        "  extracting a larger fraction of the oxygen already present. This is",
+        "  what the source paper's mechanism is about (discordant regions regulate",
+        "  supply through OEF rather than CBF) and the mode a capillary-density",
+        "  hypothesis predicts. Within it, flow is still rising but insufficiently",
+        "  in ~74% of cases and genuinely falling in ~26%.",
+        "- **`discordance_risk_overshoot`** — CMRO2 falls while BOLD rises. Flow",
+        "  delivered in excess of falling demand. Same arithmetic, different",
+        "  physiology, no obvious vascular-capacity interpretation.",
+        "",
+        "For any vascular or metabolic hypothesis, test against",
+        "`discordance_risk_extraction`. Using the total halves your effective",
+        "signal by averaging it with an unrelated phenomenon.",
         "",
         "## A deviation forced by the release",
         "",

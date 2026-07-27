@@ -52,6 +52,8 @@ __all__ = [
     "load_authors_group_map",
     "load_coupling_components",
     "discordance_fraction",
+    "discordance_modes",
+    "DiscordanceModes",
     "load_dropout_proxy",
 ]
 
@@ -459,6 +461,79 @@ def load_coupling_components(
     return d_cbf, d_cmro2, common, paths
 
 
+@dataclass(frozen=True)
+class DiscordanceModes:
+    """Discordance split into its two mechanistically distinct forms.
+
+    Both satisfy n < 1 and both are "discordant", but they are different
+    physiology and only one of them is about vascular capacity:
+
+    ``extraction``
+        CMRO₂ **rises** while BOLD **falls**. Oxygen demand goes up and blood
+        flow fails to keep pace, so the tissue strips a larger fraction of
+        oxygen out of the blood it already has. Extraction does the work that
+        flow normally would. This is the mode the Epp et al. mechanism is
+        about — discordant regions regulate supply via OEF rather than CBF —
+        and the one a capillary-density hypothesis would predict.
+
+    ``overshoot``
+        CMRO₂ **falls** while BOLD **rises**. Flow is delivered in excess of a
+        falling demand. Same arithmetic, different story, and not obviously a
+        vascular-capacity phenomenon.
+
+    Measured on ds004873 the split is close to even (52.7% extraction, 47.3%
+    overshoot of discordant subject-parcel observations), so collapsing them
+    into one number discards half the signal.
+    """
+
+    total: np.ndarray
+    extraction: np.ndarray
+    overshoot: np.ndarray
+    n_used: np.ndarray
+
+
+def discordance_modes(
+    d_cbf: np.ndarray, d_cmro2: np.ndarray, min_pct: float = 0.0
+) -> DiscordanceModes:
+    """Per-parcel subject fractions for each discordance mode.
+
+    Parameters
+    ----------
+    d_cbf, d_cmro2 : ndarray, shape (n_subjects, n_parcels)
+        Percent-change maps.
+    min_pct : float
+        Ignore responses smaller than this magnitude in ΔCMRO₂.
+
+    Returns
+    -------
+    DiscordanceModes
+        ``extraction + overshoot == total`` up to floating point.
+    """
+    d_cbf = np.asarray(d_cbf, dtype=float)
+    d_cmro2 = np.asarray(d_cmro2, dtype=float)
+    if d_cbf.shape != d_cmro2.shape:
+        raise ValueError(f"shape mismatch: {d_cbf.shape} vs {d_cmro2.shape}")
+
+    usable = np.isfinite(d_cbf) & np.isfinite(d_cmro2)
+    if min_pct > 0:
+        usable &= np.abs(d_cmro2) >= min_pct
+
+    bold_sign = np.sign(d_cbf - d_cmro2)
+    discordant = (bold_sign != np.sign(d_cmro2)) & usable
+
+    n_used = usable.sum(axis=0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        frac = lambda sel: np.where(  # noqa: E731
+            n_used > 0, sel.sum(axis=0) / n_used, np.nan
+        )
+        return DiscordanceModes(
+            total=frac(discordant),
+            extraction=frac(discordant & (d_cmro2 > 0)),
+            overshoot=frac(discordant & (d_cmro2 < 0)),
+            n_used=n_used,
+        )
+
+
 def discordance_fraction(
     d_cbf: np.ndarray, d_cmro2: np.ndarray, min_pct: float = 0.0
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -504,22 +579,8 @@ def discordance_fraction(
     n_used : ndarray, shape (n_parcels,)
         Denominator per parcel.
     """
-    d_cbf = np.asarray(d_cbf, dtype=float)
-    d_cmro2 = np.asarray(d_cmro2, dtype=float)
-    if d_cbf.shape != d_cmro2.shape:
-        raise ValueError(f"shape mismatch: {d_cbf.shape} vs {d_cmro2.shape}")
-
-    usable = np.isfinite(d_cbf) & np.isfinite(d_cmro2)
-    if min_pct > 0:
-        usable &= np.abs(d_cmro2) >= min_pct
-
-    bold_sign = np.sign(d_cbf - d_cmro2)
-    discordant = (bold_sign != np.sign(d_cmro2)) & usable
-
-    n_used = usable.sum(axis=0)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        fraction = np.where(n_used > 0, discordant.sum(axis=0) / n_used, np.nan)
-    return fraction, n_used
+    m = discordance_modes(d_cbf, d_cmro2, min_pct=min_pct)
+    return m.total, m.n_used
 
 
 def load_subject_target_matrix(

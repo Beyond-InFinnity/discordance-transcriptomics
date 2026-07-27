@@ -11,6 +11,7 @@ from src.data.targets import (
     coupling_ratio_angle,
     coupling_ratio_signed_log,
     discordance_fraction,
+    discordance_modes,
     inspect_derivatives,
     load_dropout_proxy,
     load_subject_target_matrix,
@@ -193,6 +194,45 @@ class TestDiscordanceFraction:
     def test_shape_mismatch_raises(self):
         with pytest.raises(ValueError, match="shape mismatch"):
             discordance_fraction(np.zeros((2, 3)), np.zeros((2, 4)))
+
+
+class TestDiscordanceModes:
+    """The two modes are different physiology and must not be conflated."""
+
+    def test_extraction_is_cmro2_up_bold_down(self):
+        # CMRO2 +5, CBF +2 -> demand outpaces flow, extraction rises.
+        m = discordance_modes(np.array([[2.0]]), np.array([[5.0]]))
+        assert m.extraction[0] == 1.0
+        assert m.overshoot[0] == 0.0
+
+    def test_overshoot_is_cmro2_down_bold_up(self):
+        m = discordance_modes(np.array([[-2.0]]), np.array([[-5.0]]))
+        assert m.overshoot[0] == 1.0
+        assert m.extraction[0] == 0.0
+
+    def test_extraction_covers_flow_falling_too(self):
+        """Flow genuinely dropping while demand rises is still extraction."""
+        m = discordance_modes(np.array([[-1.0]]), np.array([[5.0]]))
+        assert m.extraction[0] == 1.0
+
+    def test_modes_sum_to_total(self):
+        rng = np.random.default_rng(0)
+        d_cbf, d_cmro2 = rng.normal(size=(30, 40)), rng.normal(size=(30, 40))
+        m = discordance_modes(d_cbf, d_cmro2)
+        np.testing.assert_allclose(m.extraction + m.overshoot, m.total)
+
+    def test_total_matches_legacy_function(self):
+        rng = np.random.default_rng(1)
+        d_cbf, d_cmro2 = rng.normal(size=(20, 15)), rng.normal(size=(20, 15))
+        total, n = discordance_fraction(d_cbf, d_cmro2)
+        m = discordance_modes(d_cbf, d_cmro2)
+        np.testing.assert_allclose(m.total, total)
+        np.testing.assert_array_equal(m.n_used, n)
+
+    def test_concordant_contributes_to_neither(self):
+        m = discordance_modes(np.array([[10.0]]), np.array([[3.0]]))
+        assert m.total[0] == 0.0
+        assert m.extraction[0] == 0.0 and m.overshoot[0] == 0.0
 
 
 class TestInspector:

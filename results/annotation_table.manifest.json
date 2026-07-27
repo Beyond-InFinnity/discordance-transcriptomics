@@ -1,11 +1,11 @@
 {
   "name": "annotation_table",
-  "created_utc": "2026-07-27T06:33:53Z",
-  "git_sha": "292e3cbc7bb66b6fd93d5968faa77559f19f6c1a",
+  "created_utc": "2026-07-27T14:34:17Z",
+  "git_sha": "95da8257ae691d04e60bf0cf78f857812e5000c3",
   "git_dirty": true,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 174.02,
+  "wall_clock_sec": 167.399,
   "python": "3.11.15",
   "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
   "packages": {
@@ -24,7 +24,7 @@
   },
   "inputs": {},
   "results": {
-    "version": "0.9.1",
+    "version": "0.9.2",
     "n_rows": 334,
     "parcellations": [
       "dk68",
@@ -41,6 +41,8 @@
       "baseline_cmro2",
       "coupling_n_angle",
       "discordance_risk",
+      "discordance_risk_extraction",
+      "discordance_risk_overshoot",
       "discordance_risk_n",
       "dropout_snr_coverage",
       "venous_partial_volume",
@@ -66,6 +68,8 @@
       "baseline_cmro2": 15,
       "coupling_n_angle": 0,
       "discordance_risk": 0,
+      "discordance_risk_extraction": 0,
+      "discordance_risk_overshoot": 0,
       "discordance_risk_n": 0,
       "dropout_snr_coverage": 0,
       "venous_partial_volume": 0,
