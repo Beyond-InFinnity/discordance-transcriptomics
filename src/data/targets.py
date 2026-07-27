@@ -608,8 +608,12 @@ def load_subject_target_matrix(
     data : ndarray, shape (n_subjects, n_parcels)
     meta : TargetMeta
     """
-    if target == "baseline_oef":
-        data, subs, paths = _stack_subjects("baseline_oef", parcellation, masked)
+    if target in ("baseline_oef", "baseline_cbv", "baseline_cbf"):
+        # Baseline cerebral blood volume is the closest available proxy for
+        # vascular density: more vessels per unit tissue means more blood
+        # volume. The protocol names it as an alternative mediator, so testing
+        # it is pre-specified rather than a post-hoc addition.
+        data, subs, paths = _stack_subjects(target, parcellation, masked)
 
     elif target == "coupling_n":
         d_cbf, d_cmro2, common, paths = load_coupling_components(
