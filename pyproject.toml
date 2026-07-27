@@ -27,6 +27,8 @@ ignore = [
 # CMRO₂, π. Rewriting them as ASCII would degrade the axis text that readers
 # actually see, so the ambiguous-character rules are off for the viz layer only.
 "src/viz/*" = ["RUF001", "RUF002", "RUF003"]
+# Same for the report printer: it writes rho, Delta and pi to the terminal.
+"scripts/p0_dynamic_range.py" = ["E402", "RUF001", "RUF002"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

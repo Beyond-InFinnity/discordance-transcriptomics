@@ -158,6 +158,111 @@ def split_half_reliability(
     return raw, corrected
 
 
+@dataclass(frozen=True)
+class VarianceDecomposition:
+    """How much of a map's between-parcel spread is real signal.
+
+    A group map's parcel means differ for two reasons: parcels genuinely differ
+    (signal), and each mean carries sampling error from a finite subject sample
+    (noise). Splitting them says how much spatial structure is actually there
+    and, more usefully, what true effect size an external correlation could
+    have detected.
+
+    Attributes
+    ----------
+    var_observed : float
+        Variance across parcel means of the group map — what you see.
+    var_error : float
+        Sampling variance of a parcel mean, ``within-subject variance / n``.
+    var_true : float
+        ``var_observed - var_error``. The spatial signal.
+    signal_fraction : float
+        ``var_true / var_observed``. A variance-based analogue of reliability,
+        so it should land near the split-half estimate — a useful cross-check
+        of both, since they are computed by different routes.
+    attenuation_ceiling : float
+        ``sqrt(signal_fraction)``. Measurement noise caps the correlation this
+        map can show against even a perfect external map at this value.
+    detectable_true_rho : float
+        The **true** correlation needed to clear the spin test, after
+        attenuation. This is the number that says whether a null result is
+        informative or merely underpowered.
+    cv : float
+        Coefficient of variation of the group map — relative spread, for maps
+        on a ratio scale.
+    """
+
+    name: str
+    var_observed: float
+    var_error: float
+    var_true: float
+    signal_fraction: float
+    attenuation_ceiling: float
+    detectable_true_rho: float
+    cv: float
+    n_subjects: int
+    n_parcels: int
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def variance_decomposition(
+    data: np.ndarray, name: str = "", spin_threshold: float = 0.245
+) -> VarianceDecomposition:
+    """Split a map's between-parcel variance into signal and sampling noise.
+
+    Parameters
+    ----------
+    data : ndarray, shape (n_subjects, n_parcels)
+        Per-subject parcel values.
+    name : str
+        Label carried into the result.
+    spin_threshold : float
+        The |rho| a spin test requires at this parcel count, measured from the
+        null distribution rather than assumed. Used to convert the attenuation
+        ceiling into a detectable true effect size.
+
+    Returns
+    -------
+    VarianceDecomposition
+    """
+    data = np.asarray(data, dtype=float)
+    if data.ndim != 2:
+        raise ValueError(f"expected (n_subjects, n_parcels), got {data.shape}")
+    n_sub, n_par = data.shape
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Mean of empty slice", RuntimeWarning)
+        warnings.filterwarnings("ignore", "Degrees of freedom", RuntimeWarning)
+        parcel_means = np.nanmean(data, axis=0)
+        # Between-subject variance within each parcel, averaged over parcels.
+        within = np.nanmean(np.nanvar(data, axis=0, ddof=1))
+
+    var_obs = float(np.nanvar(parcel_means, ddof=1))
+    var_err = float(within / n_sub)
+    var_true = max(var_obs - var_err, 0.0)
+    frac = var_true / var_obs if var_obs > 0 else 0.0
+    ceiling = float(np.sqrt(frac))
+    detectable = float(spin_threshold / ceiling) if ceiling > 0 else np.inf
+
+    grand = float(np.nanmean(parcel_means))
+    cv = float(np.sqrt(var_obs) / abs(grand)) if grand != 0 else np.nan
+
+    return VarianceDecomposition(
+        name=name,
+        var_observed=var_obs,
+        var_error=var_err,
+        var_true=var_true,
+        signal_fraction=float(frac),
+        attenuation_ceiling=ceiling,
+        detectable_true_rho=detectable,
+        cv=cv,
+        n_subjects=int(n_sub),
+        n_parcels=int(n_par),
+    )
+
+
 def icc21(data: np.ndarray) -> np.ndarray:
     """ICC(2,1) per parcel — two-way random effects, single rater, absolute agreement.
 
