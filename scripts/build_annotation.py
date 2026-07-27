@@ -45,15 +45,18 @@ logger = logging.getLogger("build_annotation")
 
 PARCELLATIONS = ["schaefer200x7", "schaefer400x7", "dk68"]
 
-# 0.9.0, not 1.0.0. Semver 1.0.0 is a promise of a stable schema and stable
-# values; two things block that promise, both documented in the README:
-#   - the coupling/discordance columns use desc-orig CMRO2 because the
-#     CBV-corrected variant the authors used is not published in MNI152
-#   - AHBA coverage is computed from 5 of 6 donors (15496 is 404 upstream)
-# Both are resolvable, and resolving either would change values. Shipping this
-# as 1.0.0 would either freeze values we expect to revise, or force a 2.0.0 for
-# a fix that was always anticipated.
-VERSION = "0.9.0"
+# 0.9.1. Still not 1.0.0: one issue remains that would change values.
+#
+# RESOLVED in 0.9.1 - the coupling/discordance columns now use the
+# CBV-corrected calc CMRO2 the authors actually use, warped from T1w space with
+# their own ANTs transform (validated like-for-like at r = 1.000 for all 40
+# subjects). This changed values materially: median coupling n went 0.27 -> 0.43
+# and the sample went 30 -> 40 subjects. Those columns are now stable.
+#
+# STILL OPEN - AHBA coverage is computed from 5 of 6 donors, because 15496 is
+# 404 upstream. ahba_n_samples is the only remaining provisional column and the
+# only thing between here and 1.0.0.
+VERSION = "0.9.1"
 
 # Per-column stability. Someone building on this needs to know which columns
 # they can depend on and which may move, at the granularity of the column
@@ -72,12 +75,12 @@ COLUMN_STABILITY: dict[str, str] = {
     "baseline_oef": "stable",
     "baseline_cbf": "stable",
     "baseline_cmro2": "stable",
-    "coupling_n_angle": "provisional",
-    "discordance_risk": "provisional",
-    "discordance_risk_n": "provisional",
+    "coupling_n_angle": "stable",
+    "discordance_risk": "stable",
+    "discordance_risk_n": "stable",
     "dropout_snr_coverage": "stable",
     "venous_partial_volume": "stable",
-    "map_reliability_coupling": "provisional",
+    "map_reliability_coupling": "stable",
     "ahba_n_samples": "provisional",
 }
 

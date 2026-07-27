@@ -1,0 +1,38 @@
+{
+  "name": "warp_cbv_cmro2",
+  "created_utc": "2026-07-27T06:28:33Z",
+  "git_sha": "292e3cbc7bb66b6fd93d5968faa77559f19f6c1a",
+  "git_dirty": true,
+  "config_hash": "34917b24a35f",
+  "seed": 42,
+  "wall_clock_sec": 0.009,
+  "python": "3.11.15",
+  "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
+  "packages": {
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "pandas": "2.3.3",
+    "nibabel": "5.4.2",
+    "nilearn": "0.14.0",
+    "abagen": "0.1.4+15.gdc4a007",
+    "neuromaps": "0.0.7",
+    "netneurotools": "0.3.0",
+    "brainspace": "0.2.1",
+    "statsmodels": "0.14.6",
+    "scikit-learn": "1.8.0",
+    "pingouin": "0.6.1"
+  },
+  "inputs": {},
+  "results": {
+    "n_attempted": 40,
+    "n_ok": 40,
+    "n_failed": 0,
+    "median_r_vs_orig": 0.9999998807907104,
+    "min_r_vs_orig": 0.9999996423721313,
+    "threshold": 0.99,
+    "output_dir": "/home/connor/Documents/projects/discordance-transcriptomics/data/derived/warped"
+  },
+  "notes": [
+    "Applies the authors' own fmriprep ANTs T1w->MNI152 transform. Reference grid is a published RAS space-MNI152 map; the bundled MNI152_T1_2mm.nii.gz is LAS and warping into it produces a left-right flipped result that still looks plausible."
+  ]
+}

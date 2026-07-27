@@ -1,7 +1,7 @@
 {
   "name": "p5_hierarchy_schaefer200x7",
-  "created_utc": "2026-07-27T05:29:16Z",
-  "git_sha": "912c94de7c45c37862fdb3bc0cb149f16bcad1bb",
+  "created_utc": "2026-07-27T06:45:07Z",
+  "git_sha": "292e3cbc7bb66b6fd93d5968faa77559f19f6c1a",
   "git_dirty": true,
   "config_hash": "34917b24a35f",
   "seed": 42,
@@ -32,7 +32,7 @@
       "dropout_snr_coverage"
     ],
     "gradient_rho": {
-      "coupling_n": 0.050573057305730564,
+      "coupling_n": 0.04272427242724272,
       "baseline_oef": 0.15227122712271224
     },
     "n_survive_partial": 0,

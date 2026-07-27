@@ -1,11 +1,11 @@
 {
   "name": "p2_target_maps_dk68",
-  "created_utc": "2026-07-27T00:35:18Z",
-  "git_sha": "9c31e6f11fe6559b1809bce6496a551d5e68e299",
-  "git_dirty": false,
+  "created_utc": "2026-07-27T06:30:58Z",
+  "git_sha": "292e3cbc7bb66b6fd93d5968faa77559f19f6c1a",
+  "git_dirty": true,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 5.758,
+  "wall_clock_sec": 8.8,
   "python": "3.11.15",
   "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
   "packages": {
@@ -53,7 +53,7 @@
       "dropout_snr_coverage": 0,
       "venous_partial_volume": 0
     },
-    "coupling_n_map_reliability": 0.6020931225971806,
+    "coupling_n_map_reliability": 0.7294962512555603,
     "outputs": [
       "/home/connor/Documents/projects/discordance-transcriptomics/data/derived/target_maps/target_maps_dk68.csv",
       "/home/connor/Documents/projects/discordance-transcriptomics/data/derived/target_maps/target_maps_dk68.parquet"

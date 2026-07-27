@@ -12,11 +12,17 @@ This warps their T1w-space ``desc-CBV`` maps into MNI152 with their own
 fmriprep ANTs transform (R4 permits applying an existing transform; it forbids
 estimating one), writing to ``data/derived/warped/``.
 
-**Every subject is validated.** The warped map is correlated against that
-subject's published ``desc-orig`` MNI152 map. These are different quantities,
-so the bar is not r ~ 1, but a correctly-aligned pair correlates strongly while
-a left-right flipped one lands near 0.5 — which is the failure mode this
-pipeline actually hit, and which looks physiologically plausible otherwise.
+**Every subject is validated like-for-like.** Validation warps that subject's
+T1w-space ``control`` OEF and correlates it against their *published* MNI152
+OEF — the same quantity in both spaces, so anything below r ~ 0.99 is a warp
+fault.
+
+An earlier version validated the warped ``desc-CBV`` against the published
+``desc-orig``, which conflated two different things. Those are different
+quantities: for sub-p019 they correlate at only 0.39 **in native space, with no
+warp involved at all**, so that check flagged subjects where the CBV correction
+simply mattered a lot. The like-for-like check isolates geometry, which is what
+validation is for.
 
 Usage
 -----
@@ -38,7 +44,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data.targets import DATA_ROOT
-from src.data.warp import apply_t1w_to_mni152
+from src.data.warp import apply_t1w_to_mni152, validate_warp
 from src.utils.config import load_config
 from src.utils.manifest import manifest
 
@@ -53,8 +59,8 @@ def main() -> int:
     ap.add_argument(
         "--min-r",
         type=float,
-        default=0.75,
-        help="minimum correlation against the subject's published desc-orig map",
+        default=0.99,
+        help="minimum like-for-like warp validation r (flip scores ~0.5)",
     )
     ap.add_argument("--overwrite", action="store_true")
     args = ap.parse_args()
@@ -83,13 +89,14 @@ def main() -> int:
         )
         # Reference MUST be a published RAS map, not the bundled LAS template.
         ref = DERIV / f"sub-{sub}/qmri/sub-{sub}_task-control_space-MNI152_oef.nii.gz"
-        truth = (
-            DERIV
-            / f"sub-{sub}/qmri/sub-{sub}_task-calc_space-MNI152_desc-orig_cmro2.nii.gz"
-        )
+        # Like-for-like validation pair: the same quantity in both spaces.
+        val_t1w = DERIV / f"sub-{sub}/qmri/sub-{sub}_task-control_space-T1w_oef.nii.gz"
+        val_mni = DERIV / f"sub-{sub}/qmri/sub-{sub}_task-control_space-MNI152_oef.nii.gz"
         if not xfm.exists() or not ref.exists():
             logger.warning("sub-%s: missing transform or reference, skipping", sub)
-            rows.append({"subject": sub, "status": "missing_inputs", "r_vs_orig": np.nan})
+            rows.append(
+                {"subject": sub, "status": "missing_inputs", "warp_validation_r": np.nan}
+            )
             continue
 
         dest = out_dir / f"sub-{sub}_task-calc_space-MNI152_desc-CBV_cmro2.nii.gz"
@@ -106,17 +113,12 @@ def main() -> int:
 
             data = np.asarray(img.dataobj)
             status, r = "ok", np.nan
-            if truth.exists():
-                import nibabel as nib
-                from scipy.stats import pearsonr
-
-                t = np.asarray(nib.load(truth).dataobj)
-                m = np.isfinite(data) & np.isfinite(t) & (data != 0) & (t != 0)
-                r = float(pearsonr(data[m], t[m]).statistic)
+            if val_t1w.exists() and val_mni.exists():
+                r = validate_warp(val_t1w, val_mni, xfm, ref, min_r=0.0)
                 if r < args.min_r:
                     status = "FAILED_VALIDATION"
                     logger.error(
-                        "sub-%s: r=%.3f vs published desc-orig, below %.2f "
+                        "sub-%s: warp validation r=%.4f < %.2f "
                         "(a left-right flip scores ~0.5)",
                         sub,
                         r,
@@ -124,13 +126,14 @@ def main() -> int:
                     )
             else:
                 status = "ok_unvalidated"
+                logger.warning("sub-%s: no like-for-like pair, warp unvalidated", sub)
 
             finite = np.isfinite(data) & (data != 0)
             rows.append(
                 {
                     "subject": sub,
                     "status": status,
-                    "r_vs_orig": r,
+                    "warp_validation_r": r,
                     "n_voxels": int(finite.sum()),
                     "median_cmro2": float(np.median(data[finite]))
                     if finite.any()
@@ -145,7 +148,7 @@ def main() -> int:
                 {
                     "subject": sub,
                     "status": f"error:{type(exc).__name__}",
-                    "r_vs_orig": np.nan,
+                    "warp_validation_r": np.nan,
                 }
             )
 
@@ -159,8 +162,8 @@ def main() -> int:
             n_attempted=len(df),
             n_ok=int(ok.sum()),
             n_failed=int((~ok).sum()),
-            median_r_vs_orig=float(df.r_vs_orig.median()),
-            min_r_vs_orig=float(df.r_vs_orig.min()),
+            median_r_vs_orig=float(df.warp_validation_r.median()),
+            min_r_vs_orig=float(df.warp_validation_r.min()),
             threshold=args.min_r,
             output_dir=str(out_dir),
         )
@@ -176,13 +179,13 @@ def main() -> int:
     print(f"  succeeded        {int(ok.sum())}")
     print(f"  failed           {int((~ok).sum())}")
     print(
-        f"  validation r     median {df.r_vs_orig.median():.3f}  "
-        f"min {df.r_vs_orig.min():.3f}  (threshold {args.min_r})"
+        f"  validation r     median {df.warp_validation_r.median():.3f}  "
+        f"min {df.warp_validation_r.min():.3f}  (threshold {args.min_r})"
     )
     print(f"  median CMRO2     {df.median_cmro2.median():.1f} umol/100g/min")
     if (~ok).any():
         print("\n  FAILURES:")
-        print(df[~ok][["subject", "status", "r_vs_orig"]].to_string(index=False))
+        print(df[~ok][["subject", "status", "warp_validation_r"]].to_string(index=False))
     print(f"{'=' * 70}")
     return 0 if ok.all() else 1
 

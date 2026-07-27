@@ -71,7 +71,14 @@ DERIVATIVE_PATTERNS: dict[str, str | None] = {
     "baseline_cbf": "derivatives/sub-*/qmri/sub-*_task-control_space-MNI152_cbf.nii.gz",
     # Coupling ratio n = %ΔCBF / %ΔCMRO2 for calc relative to control.
     "calc_cbf": "derivatives/sub-*/qmri/sub-*_task-calc_space-MNI152_cbf.nii.gz",
-    "calc_cmro2": "derivatives/sub-*/qmri/sub-*_task-calc_space-MNI152_*cmro2.nii.gz",
+    # calc CMRO2 uses the CBV-CORRECTED variant, matching the authors
+    # (B_Fig1.ipynb selects desc-CBV for calc, desc-orig for every other
+    # condition, because CBV itself changes during the task). desc-CBV is not
+    # published in MNI152, so these are warped from T1w space with the authors'
+    # own ANTs transform by scripts/warp_cbv_cmro2.py — validated like-for-like
+    # at r = 1.000 for all 40 subjects. Paths starting "data/" resolve from the
+    # repo root rather than the ds004873 root.
+    "calc_cmro2": "data/derived/warped/sub-*_task-calc_space-MNI152_desc-CBV_cmro2.nii.gz",
     "control_cbf": "derivatives/sub-*/qmri/sub-*_task-control_space-MNI152_cbf.nii.gz",
     "control_cmro2": "derivatives/sub-*/qmri/sub-*_task-control_space-MNI152_*cmro2.nii.gz",
     # Dropout proxies (Phase 0b).
@@ -359,8 +366,11 @@ def _subject_of(path: Path) -> str:
 
 def _find(key: str, root: Path | None = None) -> dict[str, Path]:
     """Resolve a pattern to ``{subject: path}`` (or ``{'group': path}``)."""
-    root = root or DATA_ROOT
     pattern = _require_pattern(key)
+    # Patterns rooted at "data/" are repo-relative (derived products such as
+    # the warped CBV-corrected maps); everything else is relative to the
+    # ds004873 download.
+    root = root or (REPO_ROOT if pattern.startswith("data/") else DATA_ROOT)
     hits = sorted(root.glob(pattern))
     if not hits:
         raise FileNotFoundError(
