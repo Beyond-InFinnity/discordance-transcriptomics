@@ -92,7 +92,7 @@ def main() -> int:
     coup, _ = load_subject_target_matrix(cfg, "coupling_n", parc, masked=True)
     mats["coupling angle"] = coup
 
-    d_cbf, d_cmro2, subs, _ = load_coupling_components(parc, masked=True)
+    d_cbf, d_cmro2, _subs, _ = load_coupling_components(parc, masked=True)
     # Mode fractions are per-subject indicators, so a "subject map" is that
     # subject's 0/1 discordance pattern across parcels.
     bold = np.sign(d_cbf - d_cmro2)
