@@ -55,9 +55,20 @@ uv venv --python 3.11 .venv && source .venv/bin/activate
 uv pip install -r requirements.txt
 ```
 
-Two deviations from CLAUDE.md §4, both documented inline in `requirements.txt`:
-`abagen` installs from its GitHub tag (0.1.4 was never published to PyPI), and
-`setuptools<81` is pinned because abagen still imports `pkg_resources`.
+```bash
+# One-time, per checkout: register the notebook output-stripping filter.
+# .gitattributes is committed, but the filter lives in .git/config and does
+# NOT travel with a clone — without this, notebook outputs (including base64
+# figures) get committed and the repo bloats fast.
+nbstripout --install --attributes .gitattributes
+```
+
+Three deviations from CLAUDE.md §4, each documented inline in
+`requirements.txt`: `abagen` is pinned to a commit SHA on `main` rather than a
+release (the PyPI build calls `DataFrame.append`, removed in pandas 2.0, in the
+core aggregation path); `pandas` is capped `<3` (3.0 removed `groupby(axis=)`,
+which abagen still uses); and `setuptools<81` is pinned because abagen imports
+`pkg_resources`.
 
 ---
 
