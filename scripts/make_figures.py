@@ -33,7 +33,7 @@ from src.data.targets import (
 from src.stats.reliability import split_half_reliability
 from src.utils.config import load_config
 from src.utils.manifest import manifest
-from src.viz import figures as F
+from src.viz import figures as figs
 from src.viz.palette import apply_style
 
 logger = logging.getLogger("make_figures")
@@ -77,11 +77,11 @@ def main() -> int:
                 "Discordance — extraction mode": d.discordance_risk_extraction.to_numpy(),
                 "Discordance — overshoot mode": d.discordance_risk_overshoot.to_numpy(),
             }
-            written.append(str(F.fig_surface_panel(maps, labels, out)))
+            written.append(str(figs.fig_surface_panel(maps, labels, out)))
 
         # -- F2 network modes -------------------------------------------------
         if want("F2"):
-            written.append(str(F.fig_network_modes(ann, out)))
+            written.append(str(figs.fig_network_modes(ann, out)))
 
         # -- F3 coupling plane ------------------------------------------------
         d_cbf = d_cmro2 = None
@@ -89,11 +89,11 @@ def main() -> int:
             d_cbf, d_cmro2, subs, _ = load_coupling_components(PARC, masked=True)
             logger.info("coupling components: %d subjects", len(subs))
         if want("F3"):
-            written.append(str(F.fig_coupling_plane(d_cbf, d_cmro2, nets, out)))
+            written.append(str(figs.fig_coupling_plane(d_cbf, d_cmro2, nets, out)))
 
         # -- F4 correlation matrix --------------------------------------------
         if want("F4"):
-            written.append(str(F.fig_correlation_matrix(ann, out)))
+            written.append(str(figs.fig_correlation_matrix(ann, out)))
 
         # -- F5 reliability ----------------------------------------------------
         if want("F5"):
@@ -110,7 +110,7 @@ def main() -> int:
                 splits[label] = corrected
             written.append(
                 str(
-                    F.fig_reliability(
+                    figs.fig_reliability(
                         splits, cfg.gates.p0_reliability.pass_threshold, out
                     )
                 )
@@ -135,7 +135,7 @@ def main() -> int:
             )
             written.append(
                 str(
-                    F.fig_spin_null(
+                    figs.fig_spin_null(
                         null_r,
                         res.rho,
                         res.p_spin,
@@ -165,11 +165,11 @@ def main() -> int:
                     theirs,
                     float(spearmanr(ours[m], theirs[m]).statistic),
                 )
-            written.append(str(F.fig_mqbold_vs_pet(pairs, out)))
+            written.append(str(figs.fig_mqbold_vs_pet(pairs, out)))
 
         # -- F8 AHBA coverage --------------------------------------------------
         if want("F8"):
-            written.append(str(F.fig_ahba_coverage(ann, out)))
+            written.append(str(figs.fig_ahba_coverage(ann, out)))
 
         man.record(n_figures=len(written), outputs=written, parcellation=PARC)
         man.note(
