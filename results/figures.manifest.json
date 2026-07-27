@@ -1,0 +1,43 @@
+{
+  "name": "figures",
+  "created_utc": "2026-07-27T14:52:40Z",
+  "git_sha": "28762b6c8f9128b12a59cf6b8700bf0a18f80d54",
+  "git_dirty": true,
+  "config_hash": "34917b24a35f",
+  "seed": 42,
+  "wall_clock_sec": 41.927,
+  "python": "3.11.15",
+  "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
+  "packages": {
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "pandas": "2.3.3",
+    "nibabel": "5.4.2",
+    "nilearn": "0.14.0",
+    "abagen": "0.1.4+15.gdc4a007",
+    "neuromaps": "0.0.7",
+    "netneurotools": "0.3.0",
+    "brainspace": "0.2.1",
+    "statsmodels": "0.14.6",
+    "scikit-learn": "1.8.0",
+    "pingouin": "0.6.1"
+  },
+  "inputs": {},
+  "results": {
+    "n_figures": 8,
+    "outputs": [
+      "results/figures/F1_surface_panel.png",
+      "results/figures/F2_network_modes.png",
+      "results/figures/F3_coupling_plane.png",
+      "results/figures/F4_correlation_matrix.png",
+      "results/figures/F5_reliability.png",
+      "results/figures/F6_spin_null.png",
+      "results/figures/F7_mqbold_vs_pet.png",
+      "results/figures/F8_ahba_coverage.png"
+    ],
+    "parcellation": "schaefer200x7"
+  },
+  "notes": [
+    "Figures draw values computed in src/ and passed in; src/viz performs no analysis (\u00a75). Palette validated for colour-vision separation rather than chosen by eye."
+  ]
+}

@@ -23,6 +23,10 @@ ignore = [
 # imports are necessarily below that statement.
 "scripts/*" = ["E402"]
 "tests/*" = ["N802", "N806"]
+# Figure labels intentionally use Greek and typographic characters — ρ, Δ,
+# CMRO₂, π. Rewriting them as ASCII would degrade the axis text that readers
+# actually see, so the ambiguous-character rules are off for the viz layer only.
+"src/viz/*" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
