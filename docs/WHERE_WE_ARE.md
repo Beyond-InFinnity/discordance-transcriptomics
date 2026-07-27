@@ -92,8 +92,8 @@ map can carry.
 
 ## What this means for the original hypothesis
 
-Two independent lines now point the same way, and it is not the way the
-hypothesis predicted.
+One line points away from the hypothesis. A second line that appeared to is
+retracted below.
 
 **First, the wrong part of the brain.** If sparse capillaries cause discordance,
 the extraction mode should concentrate in association cortex. It does not. It
@@ -102,23 +102,40 @@ in the brain, while the default mode network sits fourth (0.34). Somatomotor
 cortex shows oxygen demand rising 3.8% against a blood flow response of only
 0.6% — real demand, almost no delivery response.
 
-**Second, blood volume shows no relationship.** Blood volume is the closest
-thing we have to a vessel-density measurement — more vessels means more blood
-volume. The prediction is that *less* blood volume goes with *more* extraction
-discordance, a negative correlation. We measured +0.215, already the wrong sign,
-and once the contribution of large veins is removed it collapses to **+0.060** —
-nothing at all.
+**Second — RETRACTED.** We tested blood volume against discordance and found
+nothing (+0.215 raw, +0.060 once large veins were removed), and I reported that
+as evidence against the capillary explanation. **That test was invalid**, for a
+reason found afterwards.
+
+A 2025 study mapped vascular volume in macaque cortex using a contrast agent
+(ferumoxytol) at layer-by-layer resolution, and found primary sensory cortex has
+**2–3× higher** vascular volume than association cortex. That is exactly the
+gradient the capillary hypothesis assumes — so in primates, the hypothesis's
+premise is *supported*.
+
+Our human blood-volume maps do not reproduce that gradient at all. Sensory
+divided by association gives **0.97×** in our data and **1.04×** in an
+independent human PET dataset, against the macaque's 2–3×. Both human
+measurements are essentially flat.
+
+The likely reason is that both human measurements capture *total* blood volume,
+dominated by larger vessels, while the macaque method resolves the
+microvasculature. So our blood volume is not a valid stand-in for capillary
+density, and our test of the hypothesis was measuring the wrong thing. The
+capillary explanation is **untested**, not refuted.
 
 **Important distinction.** This does *not* contradict the published paper. Their
 mechanistic claim is that discordant regions regulate oxygen supply through
 extraction rather than through flow, and our data supports that. What looks
 wrong is the *thesis speculation* about why — the capillary-density explanation.
 
-**The reframe that survives** is about regulation rather than plumbing size.
-Somatomotor cortex having real demand with no flow response is a control
-failure, not a capacity failure. The default mode network failing in the
-opposite direction fits the same picture: vasculature that tracks demand poorly
-in both directions.
+**A possible reframe** is about regulation rather than plumbing size — though
+with the blood-volume evidence withdrawn, this is now speculation rather than
+something the data supports. Somatomotor cortex having real demand with almost
+no flow response is a control failure rather than a capacity failure, and the
+default mode network failing in the opposite direction fits the same picture:
+vasculature that tracks demand poorly in both directions. Testing it needs a
+real capillary measurement, which we do not yet have.
 
 ---
 
@@ -150,6 +167,13 @@ then pick genes that fit. Swapping in vessel-tone genes now would break that.
 Reporting them separately, clearly labelled, with no confirmatory claim, is the
 honest route — and if the density genes miss while the tone genes hit, that is a
 real result you will have earned.
+
+**Get a real capillary-density measurement.** This is now the priority. The
+macaque ferumoxytol maps are public (BALSA study 1vjnV, in a standard macaque
+surface space), and published macaque-to-human surface correspondences exist —
+two evolutionary-expansion maps in our toolkit were built using them. Bringing
+that map into human space would give the first valid test of the capillary
+explanation, rather than the invalid proxy we used.
 
 **Ask the original authors for the resting-condition maps.** That single
 addition would tell you whether the somatomotor finding is real or an artifact
