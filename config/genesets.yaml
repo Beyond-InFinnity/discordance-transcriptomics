@@ -1,0 +1,121 @@
+# =====================================================================
+# FROZEN GENE SETS — CLAUDE.md R5
+# =====================================================================
+# These definitions are committed BEFORE Phase 4 results are viewed.
+# Adding or modifying a set after seeing results is p-hacking.
+#
+# Changing anything in this file after Phase 4 has been run is a
+# Stop-and-Ask item (CLAUDE.md §13.3). New sets conceived after results
+# are seen go in `exploratory:` below, are analysed in a clearly
+# labelled exploratory/ arm, and carry NO confirmatory claims.
+#
+# frozen_at: <set on first commit; do not edit thereafter>
+# msigdb_version: <PIN ON FETCH — see data/MANIFEST.yaml>
+# =====================================================================
+
+meta:
+  frozen: true
+  frozen_at: null            # ISO date, stamped by scripts/freeze_genesets.py
+  msigdb_version: null       # pinned when the GMT is fetched (§6)
+  msigdb_collection: null    # e.g. h.all.v2023.2.Hs.symbols.gmt
+
+# ---------------------------------------------------------------------
+# 8.1 Hypothesis-driven sets — MSigDB sourced
+# ---------------------------------------------------------------------
+msigdb:
+  - name: HALLMARK_GLYCOLYSIS
+    direction_h1: positive        # H1 predicts + association with discordance
+  - name: HALLMARK_OXIDATIVE_PHOSPHORYLATION
+    direction_h1: negative
+  - name: HALLMARK_ANGIOGENESIS
+    direction_h1: positive
+  - name: HALLMARK_HYPOXIA
+    direction_h1: positive
+  - name: GOBP_BLOOD_VESSEL_MORPHOGENESIS
+    direction_h1: positive
+
+# ---------------------------------------------------------------------
+# 8.1 Curated small sets
+# ---------------------------------------------------------------------
+curated:
+  endothelial:
+    genes: [PECAM1, CLDN5, VWF, FLT1, ESAM, TIE1]
+    direction_h1: negative
+    source: >-
+      Canonical endothelial markers; cf. Vanlandewijck et al. 2018 Nature
+      554:475-480 (brain vascular single-cell atlas).
+
+  pericyte_mural:
+    genes: [PDGFRB, RGS5, ANPEP, KCNJ8, ACTA2]
+    direction_h1: negative
+    source: >-
+      Vanlandewijck et al. 2018 Nature 554:475-480; He et al. 2018
+      Sci Data 5:180160.
+
+  astrocyte:
+    genes: [AQP4, GJA1, SLC1A3, ALDH1L1]
+    direction_h1: null            # no directional prediction pre-registered
+    source: >-
+      Cahoy et al. 2008 J Neurosci 28:264-278; Zhang et al. 2016 Neuron
+      89:37-53.
+
+  glucose_lactate_transport:
+    genes: [SLC2A1, SLC2A3, SLC16A1, SLC16A3, SLC16A7]
+    direction_h1: positive
+    source: >-
+      Pierre & Pellerin 2005 J Neurochem 94:1-14 (MCT/GLUT distribution
+      in brain).
+
+  glycolytic_enzymes:
+    genes: [HK1, HK2, PFKFB3, LDHA, LDHB, PKM]
+    direction_h1: positive
+    source: >-
+      Vaishnavi et al. 2010 PNAS 107:17757-17762 (aerobic glycolysis
+      topography); Goyal et al. 2014 Cell Metab 19:49-57.
+
+  interneuron_subclass:
+    genes: [PVALB, SST, VIP, LAMP5]
+    direction_h1: null            # control set, no H1 prediction
+    source: >-
+      Tasic et al. 2018 Nature 563:72-78; Hodge et al. 2019 Nature
+      573:61-68.
+
+  mitochondrial_density_proxy:
+    # Nuclear-encoded OXPHOS complex subunits. Expanded from HGNC family
+    # prefixes at load time (see src/expression/genesets.py) rather than
+    # hand-listed, so the membership is reproducible and auditable.
+    gene_prefixes: [NDUF, SDH, UQCR, COX, ATP5]
+    hgnc_families: [NDUF, SDH, UQCR, COX, ATP5]
+    direction_h1: negative
+    source: >-
+      Nuclear-encoded subunits of OXPHOS complexes I-V; membership
+      resolved against the pinned HGNC release recorded in MANIFEST.
+
+# ---------------------------------------------------------------------
+# 8.1 Cell-type deconvolution — published set, NOT hand-assembled
+# ---------------------------------------------------------------------
+cell_types:
+  source: seidlitz2020
+  citation: >-
+    Seidlitz J, Nadig A, Liu S, et al. (2020) Transcriptomic and cellular
+    decoding of regional brain vulnerability to neurogenetic disorders.
+    Nat Commun 11:3358. Derived from Lake et al. 2018 Nat Biotechnol
+    36:70-80 snDrop-seq classes.
+  classes: [Astro, Endo, Micro, Neuro-Ex, Neuro-In, Oligo, OPC]
+  direction_h1: null
+
+# ---------------------------------------------------------------------
+# 8.2 Data-driven arm — runs in PARALLEL, not instead (§8.2)
+# ---------------------------------------------------------------------
+data_driven:
+  rank_all_stable_genes: true
+  enrichment_both_tails: true
+  pls:
+    n_components: 5
+    inference: spin_test        # spin-test inference on component scores
+
+# ---------------------------------------------------------------------
+# Post-hoc sets. EMPTY AT FREEZE. Anything added here is exploratory
+# only and may never carry a confirmatory claim (R5).
+# ---------------------------------------------------------------------
+exploratory: []

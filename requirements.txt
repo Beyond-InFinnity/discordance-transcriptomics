@@ -1,0 +1,46 @@
+numpy>=1.26,<2.0
+scipy>=1.11
+# CLAUDE.md §4 says pandas>=2.1 with no upper bound, which resolves to 3.0.x.
+# pandas 3.0 removed the `axis` argument from DataFrame.groupby, which abagen
+# still uses (abagen/io.py::read_microarray), so expression extraction fails
+# outright. numpy is already capped at <2.0 in §4; this is the same omission
+# for pandas.
+pandas>=2.1,<3
+pyarrow                 # parquet for cached matrices
+nibabel>=5.2
+nilearn>=0.10.3
+# abagen: pinned to a COMMIT SHA on main, not a release.
+#
+# The PyPI release (0.1.3, the newest there) calls pandas `DataFrame.append`,
+# removed in pandas 2.0, in abagen/samples_.py::_aggregate_samples — the core
+# expression aggregation path. With the pandas>=2.1 that CLAUDE.md §4 mandates,
+# `get_expression_data` therefore fails outright with
+# "'DataFrame' object has no attribute 'append'", which blocks all of Phase 3.
+# Upstream main fixed it (pd.concat), but that fix has never been released.
+#
+# A full commit SHA is immutable — strictly stronger provenance than either a
+# PyPI release or a tag, since tags can be force-moved. Bump deliberately.
+abagen @ git+https://github.com/rmarkello/abagen.git@dc4a007e4e902e51f97251390c8d1bbf7e58c6d3
+neuromaps>=0.0.5
+netneurotools>=0.2.3
+brainspace>=0.1.10      # gradients, alternative surrogate maps
+statsmodels>=0.14
+scikit-learn>=1.4
+pingouin>=0.5.4         # partial correlations, mediation
+gseapy>=1.1             # MSigDB access
+joblib>=1.3
+pyyaml
+pydantic>=2.6
+tqdm
+matplotlib>=3.8
+seaborn>=0.13
+surfplot>=0.2           # surface figures
+datalad                 # OpenNeuro fetch
+streamlit>=1.32
+pytest>=8.0
+ruff
+
+# abagen imports pkg_resources (abagen/mouse/io.py) in both 0.1.3 and 0.1.4;
+# setuptools removed it from the default install in v81. Pinned below that so
+# `import abagen` works at all. Verified: removing setuptools breaks the import.
+setuptools<81

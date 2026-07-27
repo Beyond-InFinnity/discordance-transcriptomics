@@ -1,0 +1,66 @@
+{
+  "name": "p2_target_maps_dk68",
+  "created_utc": "2026-07-26T21:57:54Z",
+  "git_sha": null,
+  "git_dirty": true,
+  "config_hash": "34917b24a35f",
+  "seed": 42,
+  "wall_clock_sec": 5.708,
+  "python": "3.11.15",
+  "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
+  "packages": {
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "pandas": "3.0.5",
+    "nibabel": "5.4.2",
+    "nilearn": "0.14.0",
+    "abagen": "0.1.3",
+    "neuromaps": "0.0.7",
+    "netneurotools": "0.3.0",
+    "brainspace": "0.2.1",
+    "statsmodels": "0.14.6",
+    "scikit-learn": "1.8.0",
+    "pingouin": "0.6.1"
+  },
+  "inputs": {},
+  "results": {
+    "parcellation": "dk68",
+    "n_parcels": 34,
+    "columns": [
+      "parcel_index",
+      "parcel_name",
+      "hemisphere",
+      "parcellation",
+      "baseline_oef",
+      "baseline_cbf",
+      "baseline_cmro2",
+      "coupling_n_angle",
+      "coupling_n_n_subjects",
+      "coupling_n_map_reliability",
+      "dropout_snr_coverage",
+      "venous_partial_volume",
+      "baseline_source",
+      "coupling_source"
+    ],
+    "n_missing": {
+      "parcel_index": 0,
+      "baseline_oef": 3,
+      "baseline_cbf": 3,
+      "baseline_cmro2": 3,
+      "coupling_n_angle": 0,
+      "coupling_n_n_subjects": 0,
+      "coupling_n_map_reliability": 0,
+      "dropout_snr_coverage": 0,
+      "venous_partial_volume": 0
+    },
+    "coupling_n_map_reliability": 0.6020931225971806,
+    "outputs": [
+      "/home/connor/Documents/projects/discordance-transcriptomics/data/derived/target_maps/target_maps_dk68.csv",
+      "/home/connor/Documents/projects/discordance-transcriptomics/data/derived/target_maps/target_maps_dk68.parquet"
+    ]
+  },
+  "notes": [
+    "Baselines are the authors' published GMR2pCBVmasked group maps (n=40). The coupling ratio is reconstructed from unmasked per-subject maps \u2014 their per-subject masking is not reproducible from the release (see results/p1_reproduction_notes.md).",
+    "discordance_freq NOT built: only 2 of 4 conditions are published in MNI152 (CLAUDE.md \u00a713.5)."
+  ]
+}

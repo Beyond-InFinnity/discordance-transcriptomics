@@ -1,0 +1,171 @@
+# Data provenance — CLAUDE.md R8.
+#
+# data/ is gitignored. THIS FILE is the only record of what was fetched, from
+# where, and in what state. Every fetch appends an entry here with URL,
+# version/tag/DOI, SHA256, and fetch timestamp.
+#
+# Entries with `status: pending` have not been fetched yet.
+
+schema_version: 1
+updated: 2026-07-26
+
+datasets:
+
+  ds004873:
+    description: >-
+      Epp et al. 2025 Nat Neurosci — raw + mqBOLD-processed NIfTIs.
+      THE PRIMARY INPUT. Their GitHub scripts consume the mqBOLD-processed
+      NIfTIs, not the raw data.
+    citation: >-
+      Epp SM, Castrillón G, Yuan B, Andrews-Hanna J, Preibisch C, Riedl V
+      (2025) Nat Neurosci. doi:10.1038/s41593-025-02132-9
+    source: openneuro
+    url: https://openneuro.org/datasets/ds004873
+    fetch_method: src/data/fetch.py (OpenNeuro GraphQL + HTTP, checksum-verified)
+    version: "2.0.7"           # snapshot tag — PINNED, see warning below
+    dataset_doi: doi:10.18112/openneuro.ds004873.v2.0.6
+    sha256: per-file           # verified against SHA256E git-annex keys
+    fetched_at: 2026-07-26
+    local_path: data/raw/ds004873
+    status: partial
+    fetched_patterns:
+      - "derivatives/*.nii.gz"                    # group-level maps
+      - "derivatives/*/qmri/*space-MNI152*"       # per-subject quantitative maps
+    approx_size_fetched: 0.68 GB
+    not_fetched:
+      - "derivatives/*/func/*desc-preproc_bold*"  # ~1 GB/subject, ~50 GB total
+      - "derivatives/*/qmri/*space-T1w*"          # native space, not needed yet
+      - "derivatives/*/perf/*"                    # raw DSC
+    warning: >-
+      DO NOT use `aws s3 sync s3://openneuro.org/ds004873`. The S3 mirror serves
+      snapshot 1.0.4, which contains NO derivatives — only MESE, BOLD and T1w
+      (821 keys, 3.0 GB). The mqBOLD maps this project depends on exist only in
+      the 2.0.x snapshots and are reachable via the OpenNeuro API or datalad.
+    notes: >-
+      §13.5 OPEN: only 2 conditions (calc, control) have usable quantitative
+      maps. `mem` has CMRO2 only (30 subjects, T2 space, no CBF -> no coupling
+      ratio). `rest` has none. The protocol's 4-task discordance-frequency map
+      is not constructible as specified. See docs/PHASE0_HANDOFF.md §1.
+      Also: calc CMRO2 in MNI152 covers 31 subjects vs 41 for calc OEF.
+
+  two_modes_of_hemodynamics:
+    description: Epp et al. analysis code. Phase 1 reproduces this.
+    source: github
+    url: https://github.com/NeuroenergeticsLab/two_modes_of_hemodynamics
+    fetch_method: git clone --depth 50
+    version: 1b22c2cb03bab0d5cf70da6a45c4d720194dc523   # 2025-12-12
+    sha256: n/a            # git-tracked; commit SHA is the provenance
+    fetched_at: 2026-07-26
+    local_path: data/external/two_modes_of_hemodynamics
+    status: fetched
+    notes: >-
+      Python notebooks A_ through G_, run in alphabetical order; inputs are the
+      mqBOLD-processed NIfTIs. environment.yml is a fully-pinned Linux conda
+      export and may not solve — a Dockerfile is provided as the fallback.
+      Their notebooks reference all four conditions (calc/control/mem/rest),
+      more than the published derivatives contain.
+
+  ds004513:
+    description: >-
+      Castrillón / Riedl energetic costs (Sci Adv). Source of CMRGlu and
+      neuromodulator maps for comparison.
+    source: openneuro
+    url: https://openneuro.org/datasets/ds004513
+    version: null
+    sha256: null
+    fetched_at: null
+    local_path: data/raw/ds004513
+    status: pending
+    notes: Not needed until Phase 5.
+
+  control_costs:
+    description: >-
+      Time-averaged control energy map — a Phase 5 comparison target.
+    citation: >-
+      Ceballos EG, Luppi AI, Castrillón G, Saggar M, Misic B, Riedl V (2025)
+      Network Neuroscience 9:77-99.
+    source: github
+    url: https://github.com/NeuroenergeticsLab/control_costs
+    data_url: https://osf.io/  # OSF component; record exact node on fetch
+    version: null
+    sha256: null
+    fetched_at: null
+    local_path: data/external/control_costs
+    status: pending
+    notes: Not needed until Phase 5.
+
+  ahba:
+    description: >-
+      Allen Human Brain Atlas microarray. 6 donors, >20,000 genes, 3,702
+      samples in MNI space. Predominantly left hemisphere (R3).
+    source: allen
+    url: https://human.brain-map.org/
+    fetch_method: abagen.fetch_microarray(donors='all')
+    abagen_version: 0.1.3
+    cache_dir: ~/abagen-data
+    approx_size: 4 GB
+    version: null
+    sha256: null           # per-donor checksums recorded by abagen
+    fetched_at: 2026-07-26
+    local_path: ~/abagen-data/microarray
+    status: partial
+    donors_obtained: ["9861", "10021", "12876", "14380", "15697"]
+    donors_missing: ["15496"]
+    incomplete_reason: >-
+      Donor 15496 (H0351.1015) is UNAVAILABLE UPSTREAM as of 2026-07-26. The
+      canonical abagen URL
+      https://human.brain-map.org/api/v2/well_known_file_download/178238266
+      returns HTTP 404, while the other five donor URLs return 200. The Allen
+      RMA API no longer surfaces these files under WellKnownFileType
+      'NormalizedMicroarrayData' or 'NormalizedMicroarrayDatasetZip' (both
+      return 0 rows), so no replacement file ID could be located.
+    impact: >-
+      Analyses run on 5 of 6 donors. 15496 is a LEFT-hemisphere donor, so this
+      directly reduces sample coverage in the hemisphere used for all primary
+      analyses (R3) — parcels with sparse coverage lose proportionally more.
+      Any released AHBA coverage count must state n_donors=5. CLAUDE.md §14
+      says "6 adult post-mortem donors"; that sentence needs amending, or the
+      donor recovered, before publication.
+    remediation_options:
+      - Retry periodically; the 404 may be a transient Allen-side migration.
+      - Request the archive from a colleague with a pre-existing abagen cache
+        (the file is CC-BY, redistribution is permitted with attribution).
+      - Contact Allen Institute support with the dead file ID.
+
+  neuromaps:
+    description: >-
+      Reference maps + null models. Source of the Margulies principal
+      gradient, T1w/T2w myelin, CBF/CMRGlu, Hansen receptor atlas.
+    source: neuromaps
+    url: https://github.com/netneurolab/neuromaps
+    fetch_method: neuromaps.datasets.fetch_annotation()
+    neuromaps_version: 0.0.7
+    approx_size: 1 GB
+    version: null
+    sha256: null
+    fetched_at: null
+    status: pending
+
+  msigdb:
+    description: HALLMARK + GO gene sets (§8.1). Version MUST be pinned.
+    source: msigdb
+    url: https://www.gsea-msigdb.org/gsea/msigdb/
+    fetch_method: gseapy.get_library() or direct GMT download
+    version: null          # e.g. v2023.2.Hs — PIN THIS, R5 depends on it
+    collections: [h.all, c5.go.bp]
+    sha256: null
+    fetched_at: null
+    local_path: data/raw/genesets
+    status: pending
+    notes: >-
+      config/genesets.yaml is frozen against a specific MSigDB release.
+      Record the exact version here when fetched.
+
+software:
+  connectome_workbench:
+    version: 1.5.0
+    commit: 76441605d20536d81034a64c9d34ec393aa528b9
+    url: https://humanconnectome.org/storage/app/media/workbench/workbench-linux64-v1.5.0.zip
+    local_path: ~/opt/workbench
+    installed_at: 2026-07-26
+    status: installed

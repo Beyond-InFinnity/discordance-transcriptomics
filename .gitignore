@@ -1,0 +1,39 @@
+# R8: never commit data. Provenance lives in data/MANIFEST.yaml, not the files.
+data/*
+!data/MANIFEST.yaml
+!data/.gitkeep
+
+# Caches
+.cache/
+data/.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Environments
+.venv/
+venv/
+.env
+
+# Results: keep manifests and text, never the heavy artifacts (§10)
+results/**
+!results/**/
+!results/**/*.manifest.json
+!results/**/*.md
+!results/**/*.csv
+!results/**/*.json
+
+# Figures rebuilt from source
+*.nii
+*.nii.gz
+*.gii
+*.mgh
+*.mgz
+
+# OS / editor
+.DS_Store
+*.swp
+.vscode/
+.idea/

@@ -1,0 +1,41 @@
+# abagen parameter grid (CLAUDE.md §7.5).
+#
+# Full factorial over all six parameters is ~360 cells. We take:
+#   - the FULL grid over probe_selection x lr_mirror x missing  (5 x 2 x 3 = 30 cells)
+#   - plus a SEEDED random sample of 70 cells from the remainder
+# giving ~100 cells total. Sampling uses seed from config/base.yaml (R7), so the
+# selected cells are byte-identical on re-run.
+
+core:
+  # Full factorial over these three.
+  probe_selection: [diff_stability, rnaseq, max_intensity, max_variance, corr_variance]
+  lr_mirror: [null, bidirectional]
+  missing: [null, centroids, interpolate]
+
+remainder:
+  # Sampled, not exhaustive.
+  tolerance: [1, 2]
+  norm_matched: [true, false]
+  stability_threshold: [0.0, 0.1, 0.2]
+
+sampling:
+  n_random: 70
+  seed_from: base.seed
+
+# Fixed across every cell.
+fixed:
+  sample_norm: srs
+  gene_norm: srs
+  donors: all
+
+execution:
+  n_jobs: -1
+  backend: loky
+  cache: true                 # abagen is slow; cache by config hash
+  output_format: parquet
+  index_file: multiverse_index.csv
+
+reporting:
+  # R6: every effect is reported with its multiverse distribution.
+  stability_threshold_pct: 0.80   # <80% of cells with consistent sign => "unstable"
+  report: [median, iqr, pct_consistent_sign]

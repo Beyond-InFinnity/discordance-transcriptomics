@@ -1,0 +1,130 @@
+# Base configuration. No magic numbers in code (CLAUDE.md §10) — everything lives here.
+# Loaded via pydantic models in src/utils/config.py.
+
+seed: 42                      # R7: threaded through every stochastic call
+
+paths:
+  data: data
+  raw: data/raw
+  external: data/external
+  derived: data/derived
+  target_maps: data/derived/target_maps
+  expression: data/derived/expression
+  nulls: data/derived/nulls
+  cache: data/.cache
+  results: results
+
+parcellation:
+  # R3: left hemisphere only for all primary analyses.
+  primary:
+    name: schaefer200x7
+    n_parcels: 200
+    n_parcels_lh: 100
+    networks: 7
+    space: fsaverage
+    density: 10k
+    hemi: L
+  sensitivity:
+    - name: dk68
+      n_parcels: 68
+      n_parcels_lh: 34
+      space: fsaverage
+      density: 10k
+      hemi: L
+    - name: schaefer400x7
+      n_parcels: 400
+      n_parcels_lh: 200
+      space: fsaverage
+      density: 10k
+      hemi: L
+
+nulls:
+  # R1: no spatial correlation is ever reported without one of these.
+  surface_method: alexander_bloch   # spin test on parcellated surface data
+  volume_method: burt2020           # variogram surrogates, volumetric-only analyses
+  n_perm: 10000
+  cache: true
+
+competitive:
+  # R2: gene-set nulls matched on set size AND differential-stability distribution.
+  n_draws: 10000
+  match_on: [size, differential_stability]
+  ds_n_bins: 10
+
+expression:
+  # Primary pipeline: Arnatkeviciute 2019 / Markello 2021 recommended defaults (§7.5).
+  primary:
+    probe_selection: diff_stability
+    lr_mirror: bidirectional
+    missing: centroids
+    tolerance: 2
+    norm_matched: true
+    sample_norm: srs
+    gene_norm: srs
+    donors: all
+  stability_threshold: 0.1
+
+targets:
+  # §7.3 — four maps, analysed separately. Never collapse to a single "discordance".
+  maps: [coupling_n, discordance_freq, baseline_oef, baseline_cbv]
+  # n = %dCBF / %dCMRO2 blows up as the denominator approaches zero.
+  # Primary handling is the angle in the (dCBF, dCMRO2) plane; signed-log is the
+  # documented sensitivity check (§7.3).
+  coupling_n_transform: angle
+  coupling_n_transform_sensitivity: signed_log
+  n_tasks: 4
+
+stats:
+  correlation: spearman         # brain maps are rarely bivariate normal (§11)
+  fdr_method: fdr_bh
+  alpha: 0.05
+
+gates:
+  # R9: gates are gates. Failing one means STOP and report (§13.1).
+  p0_reliability:
+    n_splits: 1000
+    metric: spearman_brown
+    pass_threshold: 0.5         # >= 0.5 proceed
+    caveat_threshold: 0.3       # 0.3-0.5 proceed with caveats + reduced resolution
+                                # < 0.3 STOP
+  p0_dropout:
+    severe_threshold: 0.5       # |r| >= 0.5 -> STOP, the confound is the finding
+    # The gate criterion is evaluated on MASKED data — that is what downstream
+    # analysis consumes. The unmasked run is a reportable diagnostic, not the
+    # gate: failing it for a reason masking already fixes would be an error.
+    evaluate_on: masked
+  p1_reproduction:
+    # "Figures match published versions" is too soft to be a gate. The criterion
+    # is the spatial correlation between our reconstructed group map and the
+    # authors' published equivalent, at the primary parcellation.
+    # This number belongs in the paper regardless of outcome: we may be
+    # reconstructing from a 2-condition subset of their 4-condition analysis,
+    # so how much of their map we recover is itself a result.
+    metric: spearman
+    pass_threshold: 0.8         # >= 0.8 -> reproduction accepted
+    caveat_threshold: 0.6       # 0.6-0.8 -> proceed, document the discrepancy
+                                # < 0.6 -> STOP, we are not reproducing them
+    reference_map: derivatives/N40_cond-control_space-MNI152_median_GMR2pCBVmasked_oef.nii.gz
+
+covariates:
+  # Phase 5 hierarchy control. The principal gradient is the confound to beat.
+  hierarchy:
+    - margulies_gradient1
+    - t1w_t2w_myelin
+  mandatory:
+    # Carried from Phase 0b into every downstream model. `snr_coverage` is the
+    # per-parcel fraction of vertices surviving the authors' own SNR criterion.
+    # NOT t2star: mqBOLD derives OEF from T2* via R2', so correlating them
+    # measures the formula rather than a confound (see scripts/p0_dropout.py).
+    - dropout_snr_coverage
+    # Venous partial volume. Large draining veins are the classic BOLD confound
+    # — the "brain vs vein" problem — and venous density plausibly drives
+    # discordance directly rather than merely contaminating it. Promoted from a
+    # §14 caveat to a modelled covariate: it is a second confound control that
+    # is independent of both the hierarchy and the dropout proxy.
+    # Source: derivatives/VENAT_PartialVolume.nii.gz (ds004873 2.0.7).
+    - venous_partial_volume
+
+logging:
+  level: INFO
+  format: "%(asctime)s %(levelname)-8s %(name)s :: %(message)s"
