@@ -1,20 +1,20 @@
 {
   "name": "p0_dropout_baseline_oef_snr_coverage_schaefer200x7_masked",
-  "created_utc": "2026-07-26T19:01:40Z",
-  "git_sha": null,
-  "git_dirty": true,
-  "config_hash": "357b7f9e1487",
+  "created_utc": "2026-07-27T00:33:50Z",
+  "git_sha": "9c31e6f11fe6559b1809bce6496a551d5e68e299",
+  "git_dirty": false,
+  "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 8.21,
+  "wall_clock_sec": 2.246,
   "python": "3.11.15",
   "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
   "packages": {
     "numpy": "1.26.4",
     "scipy": "1.17.1",
-    "pandas": "3.0.5",
+    "pandas": "2.3.3",
     "nibabel": "5.4.2",
     "nilearn": "0.14.0",
-    "abagen": "0.1.3",
+    "abagen": "0.1.4+15.gdc4a007",
     "neuromaps": "0.0.7",
     "netneurotools": "0.3.0",
     "brainspace": "0.2.1",
@@ -71,15 +71,15 @@
     "parcellation": "schaefer200x7",
     "severe": false,
     "threshold": 0.5,
-    "rho": -0.18536787343909894,
-    "p_spin": 0.18918108189181082,
-    "p_naive": 0.06483269728658565,
+    "rho": -0.1965771961409939,
+    "p_spin": 0.1596840315968403,
+    "p_naive": 0.04996909614810481,
     "n_perm": 10000,
     "null_method": "alexander_bloch",
     "n_valid": 100,
     "method": "spearman"
   },
   "notes": [
-    "GATE PASS: |rho|=0.185 < 0.5. Carry 'snr_coverage' as a MANDATORY covariate in every downstream model (config covariates.mandatory)."
+    "GATE PASS: |rho|=0.197 < 0.5. Carry 'snr_coverage' as a MANDATORY covariate in every downstream model (config covariates.mandatory)."
   ]
 }

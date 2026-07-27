@@ -1,11 +1,11 @@
 {
   "name": "annotation_table",
-  "created_utc": "2026-07-26T23:34:12Z",
-  "git_sha": null,
-  "git_dirty": true,
+  "created_utc": "2026-07-27T00:37:44Z",
+  "git_sha": "9c31e6f11fe6559b1809bce6496a551d5e68e299",
+  "git_dirty": false,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 144.67,
+  "wall_clock_sec": 144.791,
   "python": "3.11.15",
   "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
   "packages": {
