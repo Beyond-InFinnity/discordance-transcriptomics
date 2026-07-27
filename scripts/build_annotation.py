@@ -7,8 +7,8 @@ here is different from an internal analysis file: every column is documented,
 every value carries its provenance, and quantities that cannot be computed
 honestly are **absent rather than approximated**.
 
-Deliberately absent in v1
--------------------------
+Deliberately absent
+-------------------
 ``discordance_frequency`` (ordinal 0-4 across tasks). Phase 1 confirmed the
 design has four co-equal conditions, but only ``calc`` and ``control`` are
 published in MNI152. A 0-2 ordinal over two conditions is not the same
@@ -44,7 +44,42 @@ from src.utils.manifest import manifest
 logger = logging.getLogger("build_annotation")
 
 PARCELLATIONS = ["schaefer200x7", "schaefer400x7", "dk68"]
-VERSION = "1.0.0"
+
+# 0.9.0, not 1.0.0. Semver 1.0.0 is a promise of a stable schema and stable
+# values; two things block that promise, both documented in the README:
+#   - the coupling/discordance columns use desc-orig CMRO2 because the
+#     CBV-corrected variant the authors used is not published in MNI152
+#   - AHBA coverage is computed from 5 of 6 donors (15496 is 404 upstream)
+# Both are resolvable, and resolving either would change values. Shipping this
+# as 1.0.0 would either freeze values we expect to revise, or force a 2.0.0 for
+# a fix that was always anticipated.
+VERSION = "0.9.0"
+
+# Per-column stability. Someone building on this needs to know which columns
+# they can depend on and which may move, at the granularity of the column
+# rather than the whole file.
+STABILITY: dict[str, str] = {
+    "stable": (
+        "Values are not expected to change. Sourced directly from the authors' "
+        "published group maps, or computed from a fixed atlas."
+    ),
+    "provisional": (
+        "Values may change. Computed from inputs known to differ from what the "
+        "source analysis used, or from an incomplete donor set."
+    ),
+}
+COLUMN_STABILITY: dict[str, str] = {
+    "baseline_oef": "stable",
+    "baseline_cbf": "stable",
+    "baseline_cmro2": "stable",
+    "coupling_n_angle": "provisional",
+    "discordance_risk": "provisional",
+    "discordance_risk_n": "provisional",
+    "dropout_snr_coverage": "stable",
+    "venous_partial_volume": "stable",
+    "map_reliability_coupling": "provisional",
+    "ahba_n_samples": "provisional",
+}
 
 # column -> (dtype, unit, description). Drives both the schema and the dictionary.
 COLUMNS: dict[str, tuple[str, str, str]] = {
@@ -222,6 +257,7 @@ def write_schema(path: Path, df: pd.DataFrame) -> None:
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "discordance_annotation",
         "version": VERSION,
+        "status": "provisional",
         "description": (
             "Parcel-level annotation of BOLD/CMRO2 discordance and baseline "
             "oxygen metabolism in human left cortex, derived from ds004873 "
@@ -236,6 +272,7 @@ def write_schema(path: Path, df: pd.DataFrame) -> None:
                 col: {
                     "type": [dtype, "null"],
                     "unit": unit,
+                    "stability": COLUMN_STABILITY.get(col),
                     "description": desc,
                 }
                 for col, (dtype, unit, desc) in COLUMNS.items()
@@ -260,11 +297,27 @@ def write_dictionary(path: Path, df: pd.DataFrame, cfg, donors: list[str]) -> No
         "",
         "## Columns",
         "",
-        "| column | unit | description |",
-        "|---|---|---|",
+        "| column | unit | stability | description |",
+        "|---|---|---|---|",
     ]
     for col, (_dtype, unit, desc) in COLUMNS.items():
-        lines.append(f"| `{col}` | {unit or '—'} | {desc} |")
+        stab = COLUMN_STABILITY.get(col, "")
+        badge = f"**{stab}**" if stab else "—"
+        lines.append(f"| `{col}` | {unit or '—'} | {badge} | {desc} |")
+    lines += (
+        [
+            "",
+            "### What the stability labels mean",
+            "",
+        ]
+        + [f"- **{k}** — {v}" for k, v in STABILITY.items()]
+        + [
+            "",
+            "`baseline_*` are the columns to build on. The coupling and discordance",
+            "columns are usable but expected to be revised; see the deviation note",
+            "below before treating their absolute values as final.",
+        ]
+    )
 
     lines += [
         "",

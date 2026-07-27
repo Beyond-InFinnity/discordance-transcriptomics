@@ -403,20 +403,55 @@ Every reported association must state:
 
 ## 12. Glossary
 
+### 12.1 Physiology and signal
+
 | Term | Meaning |
 |---|---|
-| **BOLD** | Blood-oxygenation-level-dependent signal. Sensitive to deoxyhaemoglobin, not neurons. |
-| **CMRO₂** | Cerebral metabolic rate of oxygen. Direct measure of oxidative metabolism. |
-| **CBF / CBV** | Cerebral blood flow / volume. |
-| **OEF** | Oxygen extraction fraction = CMRO₂ / (CBF × arterial O₂ content). The mechanistic discriminator in Epp et al. |
-| **mqBOLD** | Multiparametric quantitative BOLD (Preibisch). Derives OEF from T2, T2*, CBV. **This is the method used in ds004873 — NOT hypercapnia-calibrated fMRI.** Sensitivity analyses must target mqBOLD's assumptions, not the Davis model's. |
-| **Coupling ratio *n*** | %ΔCBF / %ΔCMRO₂. Determines BOLD sign and amplitude. |
-| **Concordant / discordant** | Voxels where BOLD and CMRO₂ move in the same / opposite direction. |
-| **DMN** | Default mode network. Where discordance concentrates. |
-| **AHBA** | Allen Human Brain Atlas. 6 post-mortem donors, microarray, mostly left hemisphere. |
-| **Differential stability** | Consistency of a gene's regional expression pattern across donors. Standard filter. |
-| **Spin test** | Spatial-autocorrelation-preserving permutation via spherical rotation (Alexander-Bloch 2018). |
+| **BOLD** | Blood-oxygenation-level-dependent signal. Sensitive to deoxyhaemoglobin, not neurons. To first order `sign(ΔBOLD) ≈ sign(ΔCBF − ΔCMRO₂)`. |
+| **CMRO₂** | Cerebral metabolic rate of oxygen. Direct measure of oxidative metabolism. Cortical grey matter ≈ 130–160 µmol/100g/min. |
+| **CBF / CBV** | Cerebral blood flow / volume. Cortical grey-matter CBF ≈ 45–60 mL/100g/min. |
+| **OEF** | Oxygen extraction fraction = CMRO₂ / (CBF × arterial O₂ content). Cortex ≈ 0.3–0.4. The mechanistic discriminator in Epp et al. |
+| **CaO₂** | Arterial oxygen content. In ds004873, `0.334 × Hct × 55.6 × O₂sat/100` — **subject-specific via haematocrit**, so CMRO₂ is not a pure imaging quantity. |
+| **R2′** | `1/T2* − 1/T2`. The reversible transverse relaxation rate; what mqBOLD converts into OEF. |
+| **Coupling ratio *n*** | %ΔCBF / %ΔCMRO₂. Determines BOLD sign and amplitude. **n = 1 is the BOLD null line**: below it, BOLD opposes CMRO₂. Typical task activation is n ≈ 2–4. |
+| **Concordant / discordant** | BOLD and CMRO₂ moving in the same / opposite direction. Equivalent to n > 1 / n < 1 under the first-order BOLD approximation. |
+| **DMN** | Default mode network. Where discordance concentrates — reproduced in our own data (highest of the 7 Yeo networks). |
+
+### 12.2 Method and acquisition
+
+| Term | Meaning |
+|---|---|
+| **mqBOLD** | Multiparametric quantitative BOLD (Preibisch). Derives OEF from T2, T2*, CBV. **The method in ds004873 — NOT hypercapnia-calibrated fMRI.** Sensitivity analyses must target mqBOLD's assumptions, not the Davis model's. |
+| **MESE / MEGRE** | Multi-echo spin-echo (→ T2) / multi-echo gradient-echo (→ T2*). The two acquisitions R2′ is built from. |
+| **DSC / ASL** | Dynamic susceptibility contrast (→ CBV) / arterial spin labelling (→ CBF). |
+| **OEF cap** | The authors clip OEF at `max(5 × subject median, 1.5)` and **retain** clipped voxels. Already applied in the published maps — do not re-threshold at 1.0. |
+| **qBmasked** | Their per-subject maps after GM ∩ R2′ ∩ CBV masking. **Released for one subject only**, so their per-subject masking is not reproducible from the public data. |
+| **GMR2pCBVmasked** | The same masking applied to the published *group* maps. These are the authoritative baseline source. |
+| **desc-orig vs desc-CBV** | Two CMRO₂ variants. Their calc-condition analysis uses `desc-CBV`; **only `desc-orig` is published in MNI152**, which is why our coupling columns are provisional. |
+
+### 12.3 Statistics
+
+| Term | Meaning |
+|---|---|
+| **Spin test** | Spatial-autocorrelation-preserving permutation via spherical rotation (Alexander-Bloch 2018). Required by R1. |
+| **Variogram surrogate** | `burt2020` volumetric alternative to the spin test, for analyses that never reach the surface. |
+| **Competitive null** | Gene-set null resampling random sets matched on size *and* differential stability. Required by R2 — a spatial null alone does not control for set size. |
 | **Principal gradient** | Margulies 2016 unimodal→transmodal cortical axis. **The confound to beat.** |
+| **Differential stability** | Consistency of a gene's regional expression pattern across donors. Standard filter. |
+| **Spearman-Brown** | Correction projecting a split-half correlation up to full-sample reliability. The Phase 0a metric. |
+| **Multiverse** | Running the analysis across the grid of defensible AHBA preprocessing choices and reporting the distribution, not one point estimate (R6). |
+
+### 12.4 Data and artifacts
+
+| Term | Meaning |
+|---|---|
+| **AHBA** | Allen Human Brain Atlas. 6 post-mortem donors, microarray, mostly left hemisphere. **Donor 15496 is currently unavailable upstream (HTTP 404); analyses run on 5.** |
+| **ds004873** | Epp et al. OpenNeuro dataset. **Pin snapshot 2.0.x** — the S3 mirror serves 1.0.4, which contains no derivatives at all. |
+| **Schaefer / DK-68** | Primary parcellation (200×7, LH = 100 parcels) / Desikan-Killiany sensitivity parcellation (LH = 34). |
+| **fsaverage5** | The FreeSurfer subject matching neuromaps density `10k` (10,242 vertices/hemisphere). What all surface work here uses. |
+| **`discordance_risk`** | Our released measure: fraction of subjects with n < 1 in a parcel. **Not** the Epp voxel percentage, and not directly comparable to it. |
+| **`dropout_snr_coverage`** | Fraction of a parcel's vertices surviving the authors' SNR criterion. The mandatory Phase 0b covariate. |
+| **VENAT** | Venous atlas shipped with ds004873. Source of the venous partial-volume covariate — the "brain vs vein" confound. |
 
 ---
 
