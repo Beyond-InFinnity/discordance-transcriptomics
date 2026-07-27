@@ -78,8 +78,20 @@ def git_sha(short: bool = False) -> str | None:
     return out.stdout.strip()
 
 
+# Directories whose contents are analysis *outputs*. Writing to them is what a
+# run does, so their state says nothing about whether the code is reproducible.
+_OUTPUT_PREFIXES = ("results/", "data/")
+
+
 def _git_dirty() -> bool | None:
-    """True if the working tree has uncommitted changes."""
+    """True if tracked **source** differs from the current commit.
+
+    Deliberately ignores ``results/`` and ``data/``: a run writes its own
+    outputs into ``results/``, so including them would mark every manifest
+    dirty and the flag would carry no information. What matters for
+    reproducibility is whether the code that produced the artifact matches the
+    recorded commit.
+    """
     try:
         out = subprocess.run(
             ["git", "status", "--porcelain"],
@@ -90,7 +102,12 @@ def _git_dirty() -> bool | None:
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
-    return bool(out.stdout.strip())
+
+    for line in out.stdout.splitlines():
+        path = line[3:].strip().strip('"')
+        if path and not path.startswith(_OUTPUT_PREFIXES):
+            return True
+    return False
 
 
 def _package_versions() -> dict[str, str | None]:
