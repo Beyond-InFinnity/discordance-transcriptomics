@@ -152,7 +152,8 @@ def main() -> int:
         print("\n  failures by reason:")
         print(idx[~ok].status.str.slice(0, 60).value_counts().to_string())
     print(f"\n  index -> {idx_path}\n{'=' * 64}")
-    json.dump(GRID, open(out_dir / "grid.json", "w"), default=str)
+    with (out_dir / "grid.json").open("w") as fh:
+        json.dump(GRID, fh, default=str)
     return 0
 
 
