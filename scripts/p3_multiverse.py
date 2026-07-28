@@ -35,7 +35,6 @@ import itertools
 import json
 import logging
 import sys
-import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -43,7 +42,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data.parcellate import gifti_atlas_paths
-from src.utils.config import config_hash, load_config
+from src.utils.config import REPO_ROOT, config_hash, load_config
 from src.utils.manifest import manifest
 
 logger = logging.getLogger("p3_multiverse")
@@ -75,9 +74,31 @@ def cells() -> list[dict]:
     return out
 
 
-def run_cell(params: dict, atlas, out_dir: Path) -> dict:
-    """Extract one expression matrix, or return the cached one."""
-    import abagen
+# Each cell runs in its own interpreter. The expensive probe-selection methods
+# peak near 7 GB on a machine with roughly 6 GB free, and when the kernel kills
+# one it kills the whole process — an in-process loop loses every remaining
+# cell. Isolating them means a kill costs exactly one cell, and the parent
+# records it as a failure and carries on.
+_WORKER = """
+import sys, warnings, json
+warnings.filterwarnings("ignore")
+sys.path.insert(0, {repo!r})
+import abagen
+from src.data.parcellate import gifti_atlas_paths
+params = json.loads(sys.argv[1])
+dest = sys.argv[2]
+atlas = gifti_atlas_paths({parc!r}, {density!r})
+exp = abagen.get_expression_data(atlas, donors={donors!r}, verbose=0, **params)
+exp.to_parquet(dest)
+print("SHAPE", *exp.shape)
+"""
+
+
+def run_cell(params: dict, atlas, out_dir: Path, parc: str, density: str) -> dict:
+    """Extract one expression matrix in an isolated interpreter, or reuse cache."""
+    import json as _json
+    import subprocess
+    import tempfile
 
     dest = out_dir / f"expr_{params['hash']}.parquet"
     rec = {**params, "path": str(dest)}
@@ -86,16 +107,34 @@ def run_cell(params: dict, atlas, out_dir: Path) -> dict:
         return rec
 
     kwargs = {k: v for k, v in params.items() if k != "hash"}
+    src = _WORKER.format(repo=str(REPO_ROOT), parc=parc, density=density, donors=DONORS)
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as fh:
+        fh.write(src)
+        worker = fh.name
+
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            exp = abagen.get_expression_data(atlas, donors=DONORS, verbose=0, **kwargs)
-        exp.to_parquet(dest)
-        rec["status"] = "ok"
-        rec["shape"] = list(exp.shape)
-    except Exception as exc:
-        rec["status"] = f"failed: {type(exc).__name__}: {exc}"[:200]
-        logger.warning("cell %s failed: %s", params["hash"], exc)
+        res = subprocess.run(
+            [sys.executable, worker, _json.dumps(kwargs), str(dest)],
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
+        if res.returncode == 0 and dest.exists():
+            rec["status"] = "ok"
+            shape = [ln for ln in res.stdout.splitlines() if ln.startswith("SHAPE")]
+            if shape:
+                rec["shape"] = [int(x) for x in shape[0].split()[1:]]
+        elif res.returncode < 0:
+            rec["status"] = f"killed: signal {-res.returncode} (likely out of memory)"
+            logger.warning("cell %s killed by signal %d", params["hash"], -res.returncode)
+        else:
+            tail = (res.stderr or "").strip().splitlines()
+            rec["status"] = f"failed: {tail[-1] if tail else 'unknown'}"[:200]
+            logger.warning("cell %s failed", params["hash"])
+    except subprocess.TimeoutExpired:
+        rec["status"] = "failed: timeout after 1800s"
+    finally:
+        Path(worker).unlink(missing_ok=True)
     return rec
 
 
@@ -121,7 +160,14 @@ def main() -> int:
     from joblib import Parallel, delayed
 
     recs = Parallel(n_jobs=args.n_jobs, verbose=5)(
-        delayed(run_cell)(p, atlas, out_dir) for p in grid
+        delayed(run_cell)(
+            p,
+            atlas,
+            out_dir,
+            cfg.parcellation.primary.name,
+            cfg.parcellation.primary.density,
+        )
+        for p in grid
     )
 
     idx = pd.DataFrame(recs)

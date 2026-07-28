@@ -156,12 +156,35 @@ def corr_with_null(
     p_naive = float(_corrfunc(method)(xv, yv).pvalue)
 
     # Surrogates may carry their own NaNs (e.g. medial wall rotated into a parcel).
-    null_rhos = np.full(nv.shape[1], np.nan)
-    for i in range(nv.shape[1]):
-        col = nv[:, i]
-        ok = np.isfinite(col)
-        if ok.sum() >= 3:
-            null_rhos[i] = _corr(col[ok], yv[ok], method)
+    #
+    # The obvious implementation loops over surrogates calling scipy per column.
+    # Across the Phase 4 sweep — 10,000 rotations x ~200 gene-set/target pairs x
+    # ~100 pipelines — that is on the order of 200 million scipy calls, and the
+    # analysis simply never finishes. When every surrogate is clean, which is
+    # the common case since masking happens upstream, all 10,000 correlations
+    # collapse into one matrix product on ranked data: identical numerically,
+    # several orders of magnitude faster. The per-column path is retained for
+    # the ragged case.
+    if bool(np.isfinite(nv).all()):
+        if method == "spearman":
+            nr = sps.rankdata(nv, axis=0)
+            yr = sps.rankdata(yv)
+        else:
+            nr, yr = nv, yv
+        nc = nr - nr.mean(axis=0)
+        yc = yr - yr.mean()
+        denom = np.linalg.norm(nc, axis=0) * np.linalg.norm(yc)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            null_rhos = np.where(
+                denom > 0, (nc * yc[:, None]).sum(axis=0) / denom, np.nan
+            )
+    else:
+        null_rhos = np.full(nv.shape[1], np.nan)
+        for i in range(nv.shape[1]):
+            col = nv[:, i]
+            ok = np.isfinite(col)
+            if ok.sum() >= 3:
+                null_rhos[i] = _corr(col[ok], yv[ok], method)
 
     finite = np.isfinite(null_rhos)
     n_perm_used = int(finite.sum())
