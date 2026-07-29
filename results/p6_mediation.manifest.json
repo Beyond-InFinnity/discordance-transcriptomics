@@ -1,0 +1,56 @@
+{
+  "name": "p6_mediation",
+  "created_utc": "2026-07-29T23:57:04Z",
+  "git_sha": "ef91188f58c8f54cc1cea0f8d8343d7ee09f0632",
+  "git_dirty": true,
+  "config_hash": "34917b24a35f",
+  "seed": 42,
+  "wall_clock_sec": 0.034,
+  "python": "3.11.15",
+  "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
+  "packages": {
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "pandas": "2.3.3",
+    "nibabel": "5.4.2",
+    "nilearn": "0.14.0",
+    "abagen": "0.1.4+15.gdc4a007",
+    "neuromaps": "0.0.7",
+    "netneurotools": "0.3.0",
+    "brainspace": "0.2.1",
+    "statsmodels": "0.14.6",
+    "scikit-learn": "1.8.0",
+    "pingouin": "0.6.1"
+  },
+  "inputs": {},
+  "results": {
+    "n_cells": 2,
+    "n_gene_sets": 11,
+    "n_models": 264,
+    "n_boot": 500,
+    "n_perm": 10000,
+    "mediators": [
+      "baseline_oef",
+      "baseline_cbv"
+    ],
+    "outcomes": [
+      "discordance_extraction",
+      "discordance_overshoot",
+      "coupling_angle"
+    ],
+    "n_covariates": 3,
+    "n_supported_adjusted": 0,
+    "limiting_path_counts": {
+      "a": 54,
+      "b": 12
+    },
+    "outputs": [
+      "results/p6_mediation_full.csv",
+      "results/p6_mediation_summary.csv"
+    ]
+  },
+  "notes": [
+    "The indirect effect is tested by joint significance of both links, max(a_p, b_p), not by the product's own null. The product null is built by rotating the exposure and is therefore dominated by whichever link is strong: it reports mediation whenever a is real, regardless of b. Both are recorded; indirect_p is the joint test.",
+    "Every model is fitted twice. adjusted=True residualises X, M and Y on the Phase 0b dropout proxy and the Phase 5 hierarchy controls, and is the version any mechanistic claim must rest on."
+  ]
+}

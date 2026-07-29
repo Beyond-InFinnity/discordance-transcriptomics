@@ -27,7 +27,20 @@ from scipy import stats as sps
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SpatialCorrResult", "corr_with_null", "fdr_bh", "make_nulls"]
+__all__ = [
+    "SpatialCorrResult",
+    "apply_spin",
+    "corr_with_null",
+    "fdr_bh",
+    "make_nulls",
+    "spin_indices",
+]
+
+# Null models whose surrogates are a *reindexing* of the observed parcel values,
+# and therefore data-independent. ``burt2020`` and other variogram-matched
+# generators are deliberately excluded: they synthesise new values from the
+# observed map's own spatial structure, so their surrogates cannot be reused.
+_REINDEXING_METHODS = frozenset({"alexander_bloch", "vasa", "hungarian"})
 
 CorrMethod = Literal["spearman", "pearson"]
 
@@ -285,6 +298,131 @@ def make_nulls(
         np.save(cache_path, out)
         logger.info("cached nulls to %s", cache_path)
     return out
+
+
+def spin_indices(
+    n_parcels: int,
+    atlas: str = "fsaverage",
+    density: str = "10k",
+    parcellation: Any = None,
+    n_perm: int = 10_000,
+    seed: int = 42,
+    method: str = "alexander_bloch",
+    cache_path: str | Path | None = None,
+) -> np.ndarray:
+    """Reusable parcel indices for a spin test, independent of any data.
+
+    A spherical-rotation surrogate of parcellated data is built by rotating the
+    parcel centroids and giving each rotated parcel the value of whichever
+    original parcel it lands on. That assignment depends only on the geometry —
+    the parcellation, the density, the seed — and not at all on the values being
+    rotated. So the index array can be generated once and applied to any number
+    of maps on the same parcellation, which is exact rather than approximate:
+    ``x[spin_indices(...)]`` is bit-for-bit identical to calling
+    :func:`make_nulls` on ``x``.
+
+    That matters for the mediation phase, which needs surrogates of a dozen
+    different gene-set exposure maps. Generating each separately repeats the
+    same expensive geometry for every map.
+
+    Note the indices are **not** permutations. Two rotated parcels can land on
+    the same original parcel, so values repeat and others drop out. That is the
+    documented behaviour of the parcel-level Alexander-Bloch spin, not a bug
+    here.
+
+    Parameters
+    ----------
+    n_parcels : int
+        Number of parcels in the maps these indices will be applied to.
+    atlas, density, parcellation, n_perm, seed
+        As :func:`make_nulls`.
+    method : str
+        Must be a reindexing null (``alexander_bloch``, ``vasa``,
+        ``hungarian``). Variogram methods such as ``burt2020`` synthesise
+        values from the observed map and cannot be reused, so they raise.
+    cache_path : path, optional
+        ``.npy`` file to read from / write to.
+
+    Returns
+    -------
+    ndarray of int, shape (n_parcels, n_perm)
+
+    Raises
+    ------
+    ValueError
+        If ``method`` is not a reindexing null.
+
+    See Also
+    --------
+    apply_spin : apply the returned indices to a map.
+    """
+    if method not in _REINDEXING_METHODS:
+        raise ValueError(
+            f"{method!r} surrogates depend on the observed values, so they cannot "
+            f"be reused across maps. Use make_nulls() per map instead. Reusable "
+            f"methods: {sorted(_REINDEXING_METHODS)}"
+        )
+
+    if cache_path is not None:
+        cache_path = Path(cache_path)
+        if cache_path.exists():
+            cached = np.load(cache_path)
+            if cached.shape[0] != n_parcels:
+                raise ValueError(
+                    f"cached indices at {cache_path} are for {cached.shape[0]} "
+                    f"parcels, not {n_parcels}"
+                )
+            if cached.shape[1] >= n_perm:
+                logger.info("loaded cached spin indices %s", cached.shape)
+                return cached[:, :n_perm]
+
+    # A sentinel map of distinct values makes each surrogate reveal exactly
+    # which source parcel it drew from.
+    sentinel = np.arange(float(n_parcels))
+    out = make_nulls(
+        sentinel,
+        atlas=atlas,
+        density=density,
+        parcellation=parcellation,
+        n_perm=n_perm,
+        seed=seed,
+        method=method,
+    )
+    idx = np.rint(np.asarray(out, dtype=float)).astype(np.intp)
+    if idx.min() < 0 or idx.max() >= n_parcels:
+        raise ValueError(
+            f"recovered spin indices fall outside [0, {n_parcels}); the null "
+            "model did not behave as a reindexing of parcel values"
+        )
+
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(cache_path, idx)
+        logger.info("cached spin indices to %s %s", cache_path, idx.shape)
+    return idx
+
+
+def apply_spin(x: np.ndarray, idx: np.ndarray) -> np.ndarray:
+    """Build surrogates of ``x`` from precomputed spin indices.
+
+    Parameters
+    ----------
+    x : ndarray, shape (n_parcels,)
+    idx : ndarray of int, shape (n_parcels, n_perm)
+        From :func:`spin_indices`, on the same parcellation.
+
+    Returns
+    -------
+    ndarray, shape (n_parcels, n_perm)
+        Suitable for the ``nulls`` argument of :func:`corr_with_null`.
+    """
+    x = np.asarray(x, dtype=float).ravel()
+    idx = np.asarray(idx)
+    if idx.ndim != 2:
+        raise ValueError(f"idx must be 2D (n_parcels, n_perm), got {idx.shape}")
+    if idx.shape[0] != x.shape[0]:
+        raise ValueError(f"idx is for {idx.shape[0]} parcels but x has {x.shape[0]}")
+    return x[idx]
 
 
 def fdr_bh(pvals: np.ndarray, alpha: float = 0.05) -> np.ndarray:

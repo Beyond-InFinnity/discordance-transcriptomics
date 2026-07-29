@@ -164,3 +164,135 @@ class TestFDR:
         p = np.array([0.01, 0.02, 0.03, 0.04, 0.05])
         expected = np.array([0.05, 0.05, 0.05, 0.05, 0.05])
         np.testing.assert_allclose(fdr_bh(p), expected, rtol=1e-9)
+
+
+class TestSpinIndices:
+    """``spin_indices`` claims its output is data-independent and that applying
+    it is *exact*, not approximate. If that claim is false, every mediation
+    p-value built on it is wrong, so it is pinned here rather than trusted."""
+
+    def test_rejects_non_reindexing_nulls(self):
+        """Variogram surrogates synthesise values and cannot be reused."""
+        from src.stats.spatial import spin_indices
+
+        with pytest.raises(ValueError, match="cannot"):
+            spin_indices(100, method="burt2020")
+
+    def test_apply_spin_shape_and_dtype(self):
+        from src.stats.spatial import apply_spin
+
+        x = np.arange(10.0)
+        idx = np.tile(np.arange(10)[:, None], (1, 5))
+        out = apply_spin(x, idx)
+        assert out.shape == (10, 5)
+        np.testing.assert_array_equal(out[:, 0], x)
+
+    def test_apply_spin_is_a_gather(self):
+        from src.stats.spatial import apply_spin
+
+        x = np.array([10.0, 20.0, 30.0])
+        idx = np.array([[2], [0], [1]])
+        np.testing.assert_array_equal(apply_spin(x, idx).ravel(), [30.0, 10.0, 20.0])
+
+    def test_apply_spin_parcel_mismatch_raises(self):
+        from src.stats.spatial import apply_spin
+
+        with pytest.raises(ValueError, match="parcels"):
+            apply_spin(np.arange(5.0), np.zeros((7, 3), dtype=int))
+
+    def test_apply_spin_requires_2d_idx(self):
+        from src.stats.spatial import apply_spin
+
+        with pytest.raises(ValueError, match="2D"):
+            apply_spin(np.arange(5.0), np.arange(5))
+
+    def test_apply_spin_propagates_nan(self):
+        """A parcel that is NaN in the observed map stays NaN in every surrogate,
+        so corr_with_null's masking behaves the same either way."""
+        from src.stats.spatial import apply_spin
+
+        x = np.array([1.0, np.nan, 3.0])
+        out = apply_spin(x, np.array([[1], [2], [0]]))
+        assert np.isnan(out[0, 0]) and out[1, 0] == 3.0
+
+
+class TestSpinIndicesAgainstRealGeometry:
+    """The exactness claim, checked against neuromaps itself.
+
+    Slow: generates surrogates twice on the real Schaefer geometry. It earns the
+    cost — the entire mediation phase reuses one index array across a dozen
+    exposure maps, and that is only legitimate if reuse is bit-for-bit identical
+    to generating each map's surrogates directly.
+    """
+
+    @staticmethod
+    @pytest.fixture(scope="class")
+    def geometry():
+        pytest.importorskip("neuromaps")
+        from src.data.parcellate import schaefer_gifti_for_nulls
+        from src.utils.workbench import ensure_workbench
+
+        try:
+            ensure_workbench()
+            parc = schaefer_gifti_for_nulls(200, 7, "10k", "L")
+        except Exception as exc:
+            pytest.skip(f"surface geometry unavailable: {exc}")
+        return parc
+
+    def test_reuse_is_bit_identical_to_direct_generation(self, geometry):
+        from src.stats.spatial import apply_spin, make_nulls, spin_indices
+
+        n, n_perm = 100, 20
+        idx = spin_indices(
+            n, parcellation=geometry, n_perm=n_perm, seed=42, density="10k"
+        )
+        assert idx.shape == (n, n_perm)
+
+        x = np.random.default_rng(0).normal(size=n)
+        direct = np.asarray(
+            make_nulls(x, parcellation=geometry, n_perm=n_perm, seed=42, density="10k")
+        )
+        np.testing.assert_array_equal(apply_spin(x, idx), direct)
+
+    def test_indices_are_data_independent(self, geometry):
+        """Two unrelated maps must yield the same index array."""
+        from src.stats.spatial import make_nulls
+
+        n, n_perm = 100, 20
+        kw = dict(parcellation=geometry, n_perm=n_perm, seed=42, density="10k")
+        a = np.rint(np.asarray(make_nulls(np.arange(float(n)), **kw))).astype(int)
+        rng = np.random.default_rng(7)
+        shuffled = rng.permutation(np.arange(float(n)))
+        b = np.asarray(make_nulls(shuffled, **kw))
+        # b holds shuffled values; mapping them back through the sentinel index
+        # must reproduce b exactly.
+        np.testing.assert_array_equal(shuffled[a], b)
+
+    def test_indices_are_a_resampling_not_a_permutation(self, geometry):
+        """Documents the real behaviour: rotated parcels can share a source, so
+        values repeat. A test asserting 'permutation' would be wrong."""
+        from src.stats.spatial import spin_indices
+
+        idx = spin_indices(100, parcellation=geometry, n_perm=20, seed=42, density="10k")
+        counts = [len(np.unique(idx[:, i])) for i in range(idx.shape[1])]
+        assert max(counts) <= 100
+        assert min(counts) < 100, "expected at least one repeated source parcel"
+
+    def test_seed_changes_the_indices(self, geometry):
+        from src.stats.spatial import spin_indices
+
+        kw = dict(parcellation=geometry, n_perm=20, density="10k")
+        a = spin_indices(100, seed=42, **kw)
+        b = spin_indices(100, seed=43, **kw)
+        assert not np.array_equal(a, b)
+
+    def test_cache_roundtrip_and_parcel_guard(self, geometry, tmp_path):
+        from src.stats.spatial import spin_indices
+
+        p = tmp_path / "idx.npy"
+        kw = dict(parcellation=geometry, n_perm=20, seed=42, density="10k")
+        a = spin_indices(100, cache_path=p, **kw)
+        b = spin_indices(100, cache_path=p, **kw)  # served from cache
+        np.testing.assert_array_equal(a, b)
+        with pytest.raises(ValueError, match="parcels"):
+            spin_indices(50, cache_path=p, **kw)

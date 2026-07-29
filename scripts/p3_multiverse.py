@@ -101,7 +101,14 @@ def run_cell(params: dict, atlas, out_dir: Path, parc: str, density: str) -> dic
     import tempfile
 
     dest = out_dir / f"expr_{params['hash']}.parquet"
-    rec = {**params, "path": str(dest)}
+    # Relative to the repo root: an absolute path here does not survive the
+    # index being copied to another machine, and this grid is routinely
+    # computed on one box and analysed on another.
+    try:
+        rel = dest.relative_to(REPO_ROOT)
+    except ValueError:
+        rel = dest
+    rec = {**params, "path": str(rel)}
     if dest.exists():
         rec["status"] = "cached"
         return rec
