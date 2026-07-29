@@ -70,21 +70,69 @@ STABILITY: dict[str, str] = {
         "Values may change. Computed from inputs known to differ from what the "
         "source analysis used, or from an incomplete donor set."
     ),
+    "low_reliability": (
+        "The values are what they are — they are not expected to change — but "
+        "the map does not measure a stable individual difference well enough to "
+        "rank parcels confidently. Split-half reliability falls below the 0.5 "
+        "threshold this project set for itself (CLAUDE.md §9, Phase 0a). "
+        "Prefer a higher-reliability column measuring the same thing."
+    ),
 }
-COLUMN_STABILITY: dict[str, str] = {
-    "baseline_oef": "stable",
+
+# Reliability floor from CLAUDE.md §9 Phase 0a: below this, a map is not
+# trustworthy enough to rank parcels on.
+RELIABILITY_FLOOR = 0.5
+
+# Which released column each Phase 0a reliability estimate belongs to. The
+# reliability numbers themselves are read from the Phase 0 output at build time
+# rather than copied here, so the label cannot drift away from the measurement.
+RELIABILITY_SOURCE: dict[str, str] = {
+    "baseline_oef": "baseline OEF",
+    "coupling_n_angle": "coupling angle",
+    "discordance_risk": "discordance (total)",
+    "discordance_risk_extraction": "discordance (extraction)",
+    "discordance_risk_overshoot": "discordance (overshoot)",
+}
+
+# Columns whose stability is a provenance claim rather than a measurement:
+# atlas-derived, or sourced directly from the authors' published maps.
+_ASSERTED_STABILITY: dict[str, str] = {
     "baseline_cbf": "stable",
     "baseline_cmro2": "stable",
-    "coupling_n_angle": "stable",
-    "discordance_risk": "stable",
-    "discordance_risk_extraction": "stable",
-    "discordance_risk_overshoot": "stable",
     "discordance_risk_n": "stable",
     "dropout_snr_coverage": "stable",
     "venous_partial_volume": "stable",
     "map_reliability_coupling": "stable",
     "ahba_n_samples": "provisional",
 }
+
+
+def map_reliabilities(parcellation: str = "schaefer200x7") -> dict[str, float]:
+    """Split-half reliability per released column, from the Phase 0a output.
+
+    Returns an empty mapping if Phase 0 has not been run, in which case the
+    measured columns fall back to an unlabelled state rather than to an
+    unverified "stable".
+    """
+    path = Path("results") / f"p0_dynamic_range_{parcellation}.csv"
+    if not path.exists():
+        logger.warning("no Phase 0 reliability at %s; columns left unlabelled", path)
+        return {}
+    tbl = pd.read_csv(path).set_index("name")["split_half_reliability"]
+    out = {}
+    for col, name in RELIABILITY_SOURCE.items():
+        if name in tbl.index:
+            out[col] = float(tbl[name])
+    return out
+
+
+def column_stability(reliab: dict[str, float]) -> dict[str, str]:
+    """Stability label per column: measured where possible, asserted otherwise."""
+    out = dict(_ASSERTED_STABILITY)
+    for col, r in reliab.items():
+        out[col] = "stable" if r >= RELIABILITY_FLOOR else "low_reliability"
+    return out
+
 
 # column -> (dtype, unit, description). Drives both the schema and the dictionary.
 COLUMNS: dict[str, tuple[str, str, str]] = {
@@ -119,7 +167,7 @@ COLUMNS: dict[str, tuple[str, str, str]] = {
     "discordance_risk": (
         "number",
         "fraction",
-        "Fraction of subjects in whom BOLD and CMRO2 move in opposite directions, i.e. coupling ratio n < 1. Uses the first-order approximation sign(dBOLD) = sign(dCBF - dCMRO2). See the data dictionary before using.",
+        "Fraction of subjects in whom BOLD and CMRO2 move in opposite directions, i.e. coupling ratio n < 1. Uses the first-order approximation sign(dBOLD) = sign(dCBF - dCMRO2). LOW RELIABILITY (split-half 0.49, below this project's 0.5 floor): it sums two topographically distinct modes, which cancels signal and makes the total less reliable than either part. Prefer discordance_risk_extraction (0.58) or discordance_risk_overshoot (0.60).",
     ),
     "discordance_risk_extraction": (
         "number",
@@ -269,7 +317,8 @@ def build(cfg, with_ahba: bool) -> tuple[pd.DataFrame, list[str]]:
     return out[list(COLUMNS)], donors
 
 
-def write_schema(path: Path, df: pd.DataFrame) -> None:
+def write_schema(path: Path, df: pd.DataFrame, reliab: dict[str, float]) -> None:
+    stability = column_stability(reliab)
     schema = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "discordance_annotation",
@@ -289,7 +338,14 @@ def write_schema(path: Path, df: pd.DataFrame) -> None:
                 col: {
                     "type": [dtype, "null"],
                     "unit": unit,
-                    "stability": COLUMN_STABILITY.get(col),
+                    "stability": stability.get(col),
+                    # Present only for columns Phase 0a could measure. Consumers
+                    # should attenuation-correct against this, not assume 1.0.
+                    **(
+                        {"split_half_reliability": round(reliab[col], 3)}
+                        if col in reliab
+                        else {}
+                    ),
                     "description": desc,
                 }
                 for col, (dtype, unit, desc) in COLUMNS.items()
@@ -299,7 +355,10 @@ def write_schema(path: Path, df: pd.DataFrame) -> None:
     path.write_text(json.dumps(schema, indent=2) + "\n")
 
 
-def write_dictionary(path: Path, df: pd.DataFrame, cfg, donors: list[str]) -> None:
+def write_dictionary(
+    path: Path, df: pd.DataFrame, cfg, donors: list[str], reliab: dict[str, float]
+) -> None:
+    stability = column_stability(reliab)
     lines = [
         f"# discordance_annotation v{VERSION} — data dictionary",
         "",
@@ -314,13 +373,14 @@ def write_dictionary(path: Path, df: pd.DataFrame, cfg, donors: list[str]) -> No
         "",
         "## Columns",
         "",
-        "| column | unit | stability | description |",
-        "|---|---|---|---|",
+        "| column | unit | stability | reliability | description |",
+        "|---|---|---|---|---|",
     ]
     for col, (_dtype, unit, desc) in COLUMNS.items():
-        stab = COLUMN_STABILITY.get(col, "")
+        stab = stability.get(col, "")
         badge = f"**{stab}**" if stab else "—"
-        lines.append(f"| `{col}` | {unit or '—'} | {badge} | {desc} |")
+        rel = f"{reliab[col]:.2f}" if col in reliab else "—"
+        lines.append(f"| `{col}` | {unit or '—'} | {badge} | {rel} | {desc} |")
     lines += (
         [
             "",
@@ -329,6 +389,25 @@ def write_dictionary(path: Path, df: pd.DataFrame, cfg, donors: list[str]) -> No
         ]
         + [f"- **{k}** — {v}" for k, v in STABILITY.items()]
         + [
+            "",
+            "### The reliability column",
+            "",
+            "Split-half reliability, Spearman-Brown corrected, from Phase 0a: split",
+            "the 40 subjects in half 1,000 times, rebuild the parcel map in each",
+            "half, and correlate. It answers *how much of the parcel-to-parcel",
+            "variation in this column is signal rather than sampling noise*, and it",
+            "sets a ceiling on how strongly the column can correlate with anything",
+            "else. A correlation against a column with reliability 0.5 is attenuated",
+            f"by roughly sqrt(0.5) = 0.71. Columns below {RELIABILITY_FLOOR} are",
+            "labelled `low_reliability`.",
+            "",
+            "**`discordance_risk` is one of them (0.49).** It is the sum of the two",
+            "mode columns, and it is *less* reliable than either of them, because the",
+            "two modes are topographically distinct and adding them cancels signal.",
+            "Use `discordance_risk_extraction` (0.58) or",
+            "`discordance_risk_overshoot` (0.60) — and for any vascular or",
+            "capillary-density hypothesis, the extraction column is the one the",
+            "mechanism actually concerns.",
             "",
             "`baseline_*` are the columns to build on. The coupling and discordance",
             "columns are usable but expected to be revised; see the deviation note",
@@ -477,14 +556,20 @@ def main() -> int:
         pq = out_dir / "discordance_annotation.parquet"
         df.to_csv(csv, index=False)
         df.to_parquet(pq, index=False)
-        write_schema(out_dir / "discordance_annotation.schema.json", df)
-        write_dictionary(out_dir / "README.md", df, cfg, donors)
+        reliab = map_reliabilities(cfg.parcellation.primary.name)
+        write_schema(out_dir / "discordance_annotation.schema.json", df, reliab)
+        write_dictionary(out_dir / "README.md", df, cfg, donors, reliab)
 
+        stability = column_stability(reliab)
+        low = sorted(c for c, s in stability.items() if s == "low_reliability")
         man.record(
             version=VERSION,
             n_rows=len(df),
             parcellations=sorted(df["parcellation"].unique()),
             columns=list(df.columns),
+            split_half_reliability={k: round(v, 4) for k, v in reliab.items()},
+            column_stability=stability,
+            low_reliability_columns=low,
             ahba_included=bool(df["ahba_n_samples"].notna().any()),
             ahba_donors=donors,
             ahba_n_donors=len(donors),
@@ -496,6 +581,14 @@ def main() -> int:
         man.note(
             "discordance_frequency omitted: only 2 of 4 conditions published in "
             "MNI152 (§13.5). discordance_risk is a model-free lower bound."
+        )
+        man.note(
+            "Stability labels for the five measurable columns are derived from "
+            "the Phase 0a split-half reliability, not asserted. discordance_risk "
+            "(0.49) falls below the project's own 0.5 floor and is labelled "
+            "low_reliability: summing the two topographically distinct modes "
+            "cancels signal, so the total is less reliable than either part. The "
+            "mode columns (0.58, 0.60) are the ones to use."
         )
 
     print(f"\n{'=' * 70}\nANNOTATION TABLE v{VERSION}\n{'=' * 70}")
