@@ -381,3 +381,75 @@ class TestMaxTCorrection:
         s = screen_summary(gene_screen(expr, target, nulls))
         assert s["n_genes_maxt_below_05"] >= 1
         assert 0 < s["min_p_maxt"] <= 1
+
+
+class TestPairedPathForIncompleteSurrogates:
+    """Targets with missing parcels — the bug the positive control exposed.
+
+    Rotation only has to pull one unobserved parcel into a draw for that draw to
+    be incomplete. Discarding incomplete draws, which is the obvious approach,
+    left 24 of 10,000 surrogates for a target with 3 missing parcels and *zero*
+    for the cross-species map with 17. Every p-value in that screen came back a
+    multiple of 1/3, and nothing crashed.
+    """
+
+    @pytest.fixture
+    def holey(self):
+        """A target with 17 missing parcels, matching the real control map."""
+        rng = np.random.default_rng(51)
+        n_parcels, n_genes, n_perm = 100, 300, 500
+        latent = rng.normal(size=n_parcels)
+        G = rng.normal(size=(n_parcels, n_genes))
+        G[:, :30] += latent[:, None] * 1.2
+        expr = pd.DataFrame(G, columns=[f"G{i:03d}" for i in range(n_genes)])
+        target = latent * 1.5 + rng.normal(size=n_parcels) * 0.5
+        target[rng.choice(n_parcels, 17, replace=False)] = np.nan
+        # Surrogates by resampling parcels, which is what a parcel spin does —
+        # so missing parcels propagate into most draws.
+        idx = rng.integers(0, n_parcels, size=(n_parcels, n_perm))
+        nulls = target[idx]
+        return expr, target, nulls
+
+    def test_almost_no_surrogate_is_complete(self, holey):
+        _e, _t, nulls = holey
+        assert np.isfinite(nulls).all(axis=0).mean() < 0.05, "fixture must be holey"
+
+    def test_uses_essentially_every_draw(self, holey):
+        expr, target, nulls = holey
+        res = gene_screen(expr, target, nulls)
+        assert res.attrs["paired"] is True
+        # The old behaviour would leave a handful; the paired path keeps nearly all.
+        assert res.attrs["n_perm"] > 0.9 * nulls.shape[1]
+
+    def test_p_values_are_not_quantised_to_a_tiny_denominator(self, holey):
+        """The symptom that gave the bug away."""
+        expr, target, nulls = holey
+        res = gene_screen(expr, target, nulls)
+        assert res.p_spin.nunique() > 20
+        assert res.p_spin.min() < 0.01
+
+    def test_still_recovers_a_planted_programme(self, holey):
+        expr, target, nulls = holey
+        res = gene_screen(expr, target, nulls)
+        planted = [f"G{i:03d}" for i in range(30)]
+        assert res.loc[planted, "rho"].mean() > res.rho.mean() + 0.2
+        assert res.p_maxt.min() < 0.05
+
+    def test_calibrated_when_holey_and_null(self):
+        """Missing parcels must not manufacture significance."""
+        rng = np.random.default_rng(52)
+        n_parcels, n_genes, n_perm = 100, 800, 400
+        expr = pd.DataFrame(
+            rng.normal(size=(n_parcels, n_genes)),
+            columns=[f"G{i:03d}" for i in range(n_genes)],
+        )
+        target = rng.normal(size=n_parcels)
+        target[rng.choice(n_parcels, 17, replace=False)] = np.nan
+        idx = rng.integers(0, n_parcels, size=(n_parcels, n_perm))
+        res = gene_screen(expr, target, target[idx])
+        rate = float((res.p_spin < 0.05).mean())
+        assert 0.01 < rate < 0.12, f"holey screen rejects at {rate:.3f}, nominal 0.05"
+
+    def test_complete_surrogates_take_the_unpaired_path(self, data):
+        expr, target, nulls = data
+        assert gene_screen(expr, target, nulls).attrs["paired"] is False

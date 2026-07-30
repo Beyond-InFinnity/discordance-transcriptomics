@@ -1,13 +1,13 @@
 {
   "name": "p4b_datadriven",
-  "created_utc": "2026-07-30T01:03:41Z",
-  "git_sha": "f5d0295e61298baa1c5d2a05aef1b181a250edfa",
+  "created_utc": "2026-07-30T01:17:19Z",
+  "git_sha": "39c0baed7bf5a15229a801d82bb017e6636cfa8d",
   "git_dirty": true,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 0.173,
+  "wall_clock_sec": 0.014,
   "python": "3.11.15",
-  "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
   "packages": {
     "numpy": "1.26.4",
     "scipy": "1.17.1",
@@ -24,12 +24,12 @@
   },
   "inputs": {},
   "results": {
-    "n_cells": 4,
+    "n_cells": 12,
     "n_cells_available": 120,
     "stability_threshold": 0.1,
     "n_genes_screened": 7670,
     "n_perm": 10000,
-    "n_competitive_draws": 1000,
+    "n_competitive_draws": 10000,
     "targets": [
       "discordance_extraction",
       "discordance_overshoot",
@@ -37,7 +37,7 @@
       "baseline_oef",
       "macaque_vascular_CONTROL"
     ],
-    "n_target_cell_pairs": 20,
+    "n_target_cell_pairs": 60,
     "n_with_transcriptome_excess": 0,
     "targets_with_excess": [],
     "per_gene_fdr_floor": 0.7669233076692331

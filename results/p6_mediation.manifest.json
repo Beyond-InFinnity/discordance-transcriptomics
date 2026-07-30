@@ -1,11 +1,11 @@
 {
   "name": "p6_mediation",
-  "created_utc": "2026-07-29T23:57:04Z",
-  "git_sha": "ef91188f58c8f54cc1cea0f8d8343d7ee09f0632",
-  "git_dirty": true,
+  "created_utc": "2026-07-30T01:35:01Z",
+  "git_sha": "25931d0c8fc7de563a30953efb1890cbcdf8bc28",
+  "git_dirty": false,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 0.034,
+  "wall_clock_sec": 0.268,
   "python": "3.11.15",
   "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
   "packages": {
@@ -24,10 +24,10 @@
   },
   "inputs": {},
   "results": {
-    "n_cells": 2,
+    "n_cells": 120,
     "n_gene_sets": 11,
-    "n_models": 264,
-    "n_boot": 500,
+    "n_models": 15840,
+    "n_boot": 10000,
     "n_perm": 10000,
     "mediators": [
       "baseline_oef",
@@ -41,8 +41,8 @@
     "n_covariates": 3,
     "n_supported_adjusted": 0,
     "limiting_path_counts": {
-      "a": 54,
-      "b": 12
+      "a": 55,
+      "b": 11
     },
     "outputs": [
       "results/p6_mediation_full.csv",

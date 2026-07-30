@@ -115,9 +115,8 @@ def gene_screen(
             f"expression has {expression.shape[0]} parcels, target has {target.shape[0]}"
         )
 
-    # Parcels usable in the observed comparison. Surrogates are handled by
-    # dropping non-finite null columns rather than parcels, since a rotation can
-    # pull an unobserved parcel in and demanding complete draws empties the set.
+    # Parcels usable in the observed comparison. Incomplete surrogates are dealt
+    # with below, per draw, rather than by discarding them.
     valid = np.isfinite(target) & np.isfinite(expression.to_numpy()).all(axis=1)
     if valid.sum() < 10:
         # Fall back to per-gene masking only if the all-gene mask is too strict.
@@ -129,28 +128,90 @@ def gene_screen(
     expr = expression[valid]
     tgt = target[valid]
     nul = target_nulls[valid, :]
-    good_cols = np.isfinite(nul).all(axis=0)
-    if not good_cols.any():
-        raise ValueError("every surrogate contains a missing parcel")
-    nul = nul[:, good_cols]
     n_perm = nul.shape[1]
-    if good_cols.sum() < target_nulls.shape[1]:
-        logger.info(
-            "using %d/%d surrogates (rest touched an unobserved parcel)",
-            n_perm,
-            target_nulls.shape[1],
-        )
 
-    G = expr.to_numpy(dtype=float)
-    keep = np.isfinite(G).all(axis=0) & (np.nanstd(G, axis=0) > 0)
+    # Whether each surrogate is complete decides which of two paths runs, and
+    # getting this wrong silently destroys the analysis rather than crashing it.
+    #
+    # Dropping incomplete surrogates was the original approach and it fails
+    # badly on any target with missing parcels: a rotation only has to pull in
+    # one unobserved parcel to be discarded, so a map with 3 missing parcels
+    # keeps 24 of 10,000 draws, and one with 17 keeps *none*. Both happened here.
+    # The cross-species vascular map — this arm's positive control — was reduced
+    # to two usable surrogates, which is how the bug was found: every p-value in
+    # that screen came back as a multiple of 1/3.
+    #
+    # The fix is a paired comparison. Each draw is scored on its own subset of
+    # parcels, and the observed correlation is recomputed on that same subset, so
+    # observed and null always rest on identical parcels and identical n. That
+    # keeps every draw and removes the n-mismatch a naive pairwise deletion would
+    # introduce.
+    complete = np.isfinite(nul).all(axis=0)
+    paired = not complete.all()
+
+    G_raw = expr.to_numpy(dtype=float)
+    keep = np.isfinite(G_raw).all(axis=0) & (np.nanstd(G_raw, axis=0) > 0)
     genes = expr.columns[keep]
-    G = _zrank(G[:, keep])
+    G_raw = G_raw[:, keep]
+    G = _zrank(G_raw)
     t = _zrank(tgt[:, None]).ravel()
-    N = _zrank(nul)
+    n_genes = len(genes)
 
     rho = G.T @ t
-    n_genes = len(genes)
-    logger.info("screening %d genes against %d surrogates", n_genes, n_perm)
+    if paired:
+        logger.info(
+            "screening %d genes against %d surrogates (paired: only %d/%d "
+            "surrogates are complete, so each draw is scored on its own parcels)",
+            n_genes,
+            n_perm,
+            int(complete.sum()),
+            n_perm,
+        )
+    else:
+        logger.info("screening %d genes against %d surrogates", n_genes, n_perm)
+
+    if paired:
+        # Moments needed for a per-column correlation with per-column parcel
+        # masks. Everything is a matrix product over the mask, so the whole
+        # (n_genes, n_perm) surface is built without ever looping over draws.
+        W = np.isfinite(nul).astype(float)
+        A = np.where(W > 0, np.nan_to_num(nul), 0.0)
+        T = np.where(W > 0, t[:, None], 0.0)
+        counts = W.sum(axis=0)
+        too_small = counts < 10
+        if too_small.all():
+            raise ValueError("every surrogate retains fewer than 10 parcels")
+    else:
+        N = _zrank(nul)
+
+    def _blocks(lo: int, hi: int) -> tuple[np.ndarray, np.ndarray]:
+        """|null rho| and |observed rho| for genes [lo, hi), per surrogate."""
+        if not paired:
+            nb = np.abs(G[:, lo:hi].T @ N)
+            return nb, np.repeat(np.abs(rho[lo:hi])[:, None], n_perm, axis=1)
+        # Ranked within the full valid set, then restricted per draw. Ranking
+        # inside every one of ~9,000 distinct parcel subsets would be exact but
+        # is not affordable; restricting global ranks is monotone in them, and
+        # observed and null are treated identically so the comparison stays fair.
+        Gb = G_raw[:, lo:hi]
+        Gb = sps.rankdata(Gb, axis=0).astype(float)
+        sg = Gb.T @ W
+        sgg = (Gb**2).T @ W
+        with np.errstate(invalid="ignore", divide="ignore"):
+            varg = sgg / counts - (sg / counts) ** 2
+
+            def _corr(Y: np.ndarray) -> np.ndarray:
+                sy = Y.sum(axis=0)
+                syy = (Y**2).sum(axis=0)
+                vary = syy / counts - (sy / counts) ** 2
+                cov = (Gb.T @ Y) / counts - (sg / counts) * (sy / counts)
+                out = cov / np.sqrt(varg * vary)
+                return np.where(np.isfinite(out), np.abs(out), np.nan)
+
+            nb, ob = _corr(A), _corr(T)
+        nb[:, too_small] = np.nan
+        ob[:, too_small] = np.nan
+        return nb, ob
 
     # The hit threshold has to come from the NULL, not from the observed
     # correlations. Taking the observed 95th percentile makes the test vacuous:
@@ -159,33 +220,43 @@ def gene_screen(
     # from a subsample of rotations across all genes, which is unbiased for the
     # pooled null and costs one extra small matrix product.
     n_probe = min(200, n_perm)
-    probe = np.abs(G.T @ N[:, :n_probe])
-    thresh = float(np.quantile(probe, 0.95))
+    probe = (
+        _blocks(0, n_genes)[0][:, :n_probe] if paired else np.abs(G.T @ N[:, :n_probe])
+    )
+    thresh = float(np.nanquantile(probe, 0.95))
     del probe
 
-    # Two counts from the same blocks.
+    # Three quantities from the same blocks.
     #
-    # Per gene: how many surrogates reach its own |rho|. That is the gene's spin
-    # p-value, resolution-limited at 1/(n_perm+1).
+    # Per gene: how many surrogates reach its observed |rho|. That is the gene's
+    # spin p-value, resolution-limited at 1/(n_perm+1).
     #
     # Per surrogate: how many genes reach the null threshold. That gives a null
     # distribution for the *number* of hits, which is what the
     # transcriptome-level test needs — and unlike a per-gene correction it
     # respects co-expression, because every gene is scored against the same
     # rotated map within a draw. See :func:`screen_summary`.
+    #
+    # Per surrogate: the largest |rho| over all genes, for Westfall-Young.
     n_extreme = np.zeros(n_genes, dtype=np.int64)
-    hits_per_perm = np.zeros(n_perm, dtype=np.int64)
-    # Running maximum |rho| over genes, per rotation — the Westfall-Young
-    # max-statistic. See the p_maxt note below.
+    n_used = np.zeros(n_genes, dtype=np.int64)
+    hits_per_perm = np.zeros(n_perm, dtype=float)
     max_per_perm = np.zeros(n_perm, dtype=float)
     for lo in range(0, n_genes, chunk):
         hi = min(lo + chunk, n_genes)
-        block = np.abs(G[:, lo:hi].T @ N)  # (chunk, n_perm)
-        n_extreme[lo:hi] = (block >= np.abs(rho[lo:hi])[:, None]).sum(axis=1)
-        hits_per_perm += (block >= thresh).sum(axis=0)
-        np.maximum(max_per_perm, block.max(axis=0), out=max_per_perm)
+        block, obs = _blocks(lo, hi)
+        ok = np.isfinite(block) & np.isfinite(obs)
+        n_used[lo:hi] = ok.sum(axis=1)
+        n_extreme[lo:hi] = (ok & (block >= obs)).sum(axis=1)
+        hits_per_perm += (ok & (block >= thresh)).sum(axis=0)
+        np.maximum(
+            max_per_perm,
+            np.nanmax(np.where(ok, block, -np.inf), axis=0),
+            out=max_per_perm,
+        )
 
-    p_spin = (n_extreme + 1) / (n_perm + 1)
+    # Denominator is the draws actually usable for that gene, not n_perm.
+    p_spin = (n_extreme + 1) / (np.maximum(n_used, 1) + 1)
     out = pd.DataFrame({"rho": rho, "p_spin": p_spin}, index=genes)
     out.index.name = "gene"
 
@@ -209,15 +280,19 @@ def gene_screen(
     # right per-gene answer here, and it is strictly stronger than BH: a gene
     # clearing p_maxt < 0.05 has beaten every other gene's best shot at chance.
     out["p_fdr"] = fdr_bh(out.p_spin.to_numpy())
+    finite_max = max_per_perm[np.isfinite(max_per_perm)]
     out["p_maxt"] = [
-        (int((max_per_perm >= abs(r)).sum()) + 1) / (n_perm + 1) for r in rho
+        (int((finite_max >= abs(r)).sum()) + 1) / (len(finite_max) + 1) for r in rho
     ]
-    floor = n_genes / (n_perm + 1)
+    n_eff = int(np.median(n_used)) if n_genes else n_perm
+    floor = n_genes / (n_eff + 1)
     out.attrs["fdr_floor"] = floor
     out.attrs["hits_per_perm"] = hits_per_perm
     out.attrs["max_per_perm"] = max_per_perm
     out.attrs["threshold"] = thresh
-    out.attrs["n_perm"] = n_perm
+    out.attrs["n_perm"] = n_eff
+    out.attrs["n_perm_requested"] = n_perm
+    out.attrs["paired"] = bool(paired)
     if floor > 0.05:
         logger.info(
             "per-gene FDR is floored at %.2f (%d genes, %d rotations); read "
@@ -280,6 +355,8 @@ def screen_summary(screen: pd.DataFrame) -> dict[str, Any]:
         "p": (n_ext + 1) / (len(hits) + 1),
         "per_gene_fdr_floor": float(screen.attrs["fdr_floor"]),
         "frac_p_spin_below_05": float((screen.p_spin < 0.05).mean()),
+        "paired": bool(screen.attrs.get("paired", False)),
+        "n_perm_requested": int(screen.attrs.get("n_perm_requested", 0)),
         "n_genes_maxt_below_05": int((screen.p_maxt < 0.05).sum()),
         "min_p_maxt": float(screen.p_maxt.min()),
     }
