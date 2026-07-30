@@ -1,13 +1,13 @@
 {
   "name": "p4_genesets",
-  "created_utc": "2026-07-28T12:24:23Z",
-  "git_sha": "57dad991f117087a49019cf32d02f181cd748832",
-  "git_dirty": false,
+  "created_utc": "2026-07-30T00:55:56Z",
+  "git_sha": "39c0baed7bf5a15229a801d82bb017e6636cfa8d",
+  "git_dirty": true,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 0.078,
+  "wall_clock_sec": 0.105,
   "python": "3.11.15",
-  "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
   "packages": {
     "numpy": "1.26.4",
     "scipy": "1.17.1",
@@ -24,9 +24,9 @@
   },
   "inputs": {},
   "results": {
-    "n_cells": 96,
+    "n_cells": 120,
     "n_gene_sets": 11,
-    "n_tests": 12360,
+    "n_tests": 15480,
     "n_competitive_draws": 10000,
     "n_survive_both": 1
   },
