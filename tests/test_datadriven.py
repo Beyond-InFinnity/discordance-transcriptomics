@@ -74,10 +74,28 @@ class TestScreenCorrectness:
         assert res.rho.is_monotonic_decreasing
 
     def test_chunking_does_not_change_the_answer(self, data):
+        """Chunk size must not change the science, but it does change bits.
+
+        BLAS selects kernels and accumulation orders by shape, so a blocked
+        product differs from a whole one around 1e-14 — and where a null value
+        sits within that of a gene's observed value, one permutation count can
+        move. rho is computed unchunked and must match exactly; the p-values
+        derived from counts get a one-draw tolerance.
+
+        This originally asserted exact frame equality and passed on one machine
+        and failed on another, which is the least useful kind of test. See the
+        R7 note in src/utils/compute.py.
+        """
         expr, target, nulls = data
         a = gene_screen(expr, target, nulls, chunk=17)
         b = gene_screen(expr, target, nulls, chunk=100_000)
-        pd.testing.assert_frame_equal(a, b)
+        assert list(a.index) == list(b.index)
+        np.testing.assert_array_equal(a.rho.to_numpy(), b.rho.to_numpy())
+        one_draw = 1.5 / (nulls.shape[1] + 1)
+        for col in ("p_spin", "p_maxt"):
+            np.testing.assert_allclose(
+                a[col].to_numpy(), b[col].to_numpy(), atol=one_draw
+            )
 
     def test_finds_the_planted_gene(self, data):
         expr, target, nulls = data

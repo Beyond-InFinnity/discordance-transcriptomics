@@ -150,31 +150,33 @@ def main() -> int:
     ap.add_argument("--config", default="config/base.yaml")
     ap.add_argument("--n-jobs", type=int, default=6)
     ap.add_argument("--limit", type=int, default=None, help="run only the first N cells")
+    ap.add_argument(
+        "--parcellation",
+        default=None,
+        help="override the primary parcellation (§7.1 sensitivity analyses)",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     logging.basicConfig(level=cfg.logging.level, format=cfg.logging.format)
 
-    out_dir = cfg.path("expression") / "multiverse"
+    parc = args.parcellation or cfg.parcellation.primary.name
+    density = cfg.parcellation.primary.density
+    # One directory per parcellation: the cell hash covers abagen parameters
+    # only, so two parcellations would otherwise collide on the same filenames
+    # and silently serve each other's cached matrices.
+    sub = "multiverse" if parc == cfg.parcellation.primary.name else f"multiverse_{parc}"
+    out_dir = cfg.path("expression") / sub
     out_dir.mkdir(parents=True, exist_ok=True)
-    atlas = gifti_atlas_paths(
-        cfg.parcellation.primary.name, cfg.parcellation.primary.density
-    )
+    atlas = gifti_atlas_paths(parc, density)
 
     grid = cells()[: args.limit]
-    logger.info("multiverse: %d cells, %d jobs", len(grid), args.n_jobs)
+    logger.info("multiverse @ %s: %d cells, %d jobs", parc, len(grid), args.n_jobs)
 
     from joblib import Parallel, delayed
 
     recs = Parallel(n_jobs=args.n_jobs, verbose=5)(
-        delayed(run_cell)(
-            p,
-            atlas,
-            out_dir,
-            cfg.parcellation.primary.name,
-            cfg.parcellation.primary.density,
-        )
-        for p in grid
+        delayed(run_cell)(p, atlas, out_dir, parc, density) for p in grid
     )
 
     idx = pd.DataFrame(recs)
@@ -182,8 +184,9 @@ def main() -> int:
     idx.to_csv(idx_path, index=False)
 
     ok = idx.status.isin(["ok", "cached"])
-    with manifest("p3_multiverse", cfg) as man:
+    with manifest(f"p3_multiverse_{parc}", cfg) as man:
         man.record(
+            parcellation=parc,
             n_cells=len(idx),
             n_ok=int(ok.sum()),
             n_failed=int((~ok).sum()),

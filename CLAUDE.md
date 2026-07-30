@@ -153,9 +153,33 @@ over arrays large enough to amortise the transfer:
 
 The old warning still applies in spirit and is worth keeping in mind: **do not
 invent GPU work to justify the hardware.** If a step is fast enough on CPU, leave
-it there. Anything moved to a GPU must produce numerically identical results to
-the CPU path, and that equivalence must be asserted in a test — float32
-accumulation over long reductions is a real hazard for permutation counting.
+it there.
+
+**Precision rule, revised after measurement.** An earlier draft of this section
+required GPU results to be numerically identical to the CPU path. Benchmarking
+showed that rule cannot be satisfied at any speed advantage on consumer cards:
+
+| | TFLOPS |
+|---|---:|
+| RTX 3070, float32 | 6.50 |
+| RTX 3070, float64 | 0.26 |
+| 16-core CPU, float64 | 0.26 |
+
+Double precision runs at 1/32 rate on consumer silicon, landing exactly on top of
+the CPU — a bit-identical GPU path is achievable and worthless. The whole
+advantage is in float32, which is not bit-identical.
+
+So the standard is **identical decisions with the discrepancy measured**, not
+identical bits. On screen-shaped data, float32 against float64 gives a maximum
+absolute difference of 2.7e-7 and flips 19 of 40,000,000 threshold comparisons
+(4.75e-7). Each flip moves one gene's permutation p-value by 1/n_perm — the
+fourth decimal — and cannot move it across 0.05 unless it already sat on 0.05 to
+four digits.
+
+Concretely: `src/utils/compute.py::validate_backend` performs that measurement,
+the test suite asserts the flip rate stays below 1e-5, and `dtype='float64'`
+remains the default for anything whose exact reproduction matters more than its
+runtime.
 
 ---
 

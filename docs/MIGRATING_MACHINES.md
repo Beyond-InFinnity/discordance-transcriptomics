@@ -60,6 +60,20 @@ nothing over re-fetching — we never had it.
 If you want to try recovering it, that is a conversation with the Allen
 Institute, not a scripting problem.
 
+### One rsync trap that fails silently
+
+`rsync --exclude=data` excludes **every** path component named `data`, not just
+the top-level directory — so it also drops `src/data/`, and the copy looks fine
+until an import fails. Anchor the pattern:
+
+```bash
+rsync -a --exclude=/.venv --exclude=/data --exclude=/.git --exclude='__pycache__' \
+  ./ host:~/discordance-transcriptomics/
+```
+
+The leading slash pins the pattern to the transfer root. Verify with
+`find src -name "__init__.py" | wc -l` — it should return 6.
+
 ### Machine-local memory
 
 Notes I keep under
