@@ -22,16 +22,33 @@ meta:
 # ---------------------------------------------------------------------
 # 8.1 Hypothesis-driven sets — MSigDB sourced
 # ---------------------------------------------------------------------
+# `source_key` is the EXACT key in data/raw/genesets/msigdb_sets.json, matched
+# literally. It exists because substring matching silently loaded the wrong set.
+#
+# Four fetched terms contain the string "blood vessel morphogenesis" — the
+# general GO:0048514 term, branching, negative-regulation, and venous. The old
+# loader matched all four and the last in dict order won, so
+# GOBP_BLOOD_VESSEL_MORPHOGENESIS was in fact the 5-gene *Venous* Blood Vessel
+# Morphogenesis set (GO:0048845) throughout Phases 4 and 6. PROX1 and TBX20 are
+# venous/lymphatic identity markers and should have given it away.
+#
+# The frozen declaration below is unchanged — this pins the loader to it, rather
+# than modifying what was frozen (R5, §13.3).
 msigdb:
   - name: HALLMARK_GLYCOLYSIS
+    source_key: "Glycolysis"
     direction_h1: positive        # H1 predicts + association with discordance
   - name: HALLMARK_OXIDATIVE_PHOSPHORYLATION
+    source_key: "Oxidative Phosphorylation"
     direction_h1: negative
   - name: HALLMARK_ANGIOGENESIS
+    source_key: "Angiogenesis"
     direction_h1: positive
   - name: HALLMARK_HYPOXIA
+    source_key: "Hypoxia"
     direction_h1: positive
   - name: GOBP_BLOOD_VESSEL_MORPHOGENESIS
+    source_key: "Blood Vessel Morphogenesis (GO:0048514)"
     direction_h1: positive
 
 # ---------------------------------------------------------------------

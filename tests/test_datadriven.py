@@ -471,3 +471,78 @@ class TestPairedPathForIncompleteSurrogates:
     def test_complete_surrogates_take_the_unpaired_path(self, data):
         expr, target, nulls = data
         assert gene_screen(expr, target, nulls).attrs["paired"] is False
+
+
+class TestFrozenGeneSetIdentity:
+    """R5 depends on the frozen sets being the sets that actually load.
+
+    GOBP_BLOOD_VESSEL_MORPHOGENESIS silently loaded as the 5-gene *Venous* Blood
+    Vessel Morphogenesis term (GO:0048845) instead of the 53-gene general term
+    (GO:0048514), through every Phase 4 and Phase 6 result. Four fetched terms
+    contain the substring "blood vessel morphogenesis"; the old loader matched
+    all four and the last in dict order won. It produced plausible numbers and
+    never raised.
+    """
+
+    @pytest.fixture
+    def sets(self):
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from p4_genesets import MSIGDB, load_genesets
+
+        if not MSIGDB.exists():
+            pytest.skip("MSigDB cache not fetched")
+        return load_genesets()
+
+    def test_blood_vessel_set_is_the_general_term(self, sets):
+        g = sets["GOBP_BLOOD_VESSEL_MORPHOGENESIS"]["genes"]
+        assert len(g) == 53, f"expected GO:0048514 (53 genes), got {len(g)}"
+
+    def test_not_the_venous_subterm(self, sets):
+        """The specific wrong answer, pinned by its exact membership."""
+        g = set(sets["GOBP_BLOOD_VESSEL_MORPHOGENESIS"]["genes"])
+        assert g != {"ENG", "NOTCH1", "PROX1", "TBX20", "VEGFA"}
+
+    def test_hallmark_sizes(self, sets):
+        for name, n in [
+            ("HALLMARK_GLYCOLYSIS", 200),
+            ("HALLMARK_OXIDATIVE_PHOSPHORYLATION", 200),
+            ("HALLMARK_HYPOXIA", 200),
+            ("HALLMARK_ANGIOGENESIS", 36),
+        ]:
+            assert len(sets[name]["genes"]) == n, name
+
+    def test_every_frozen_msigdb_set_pins_its_source(self):
+        import yaml
+
+        from src.utils.config import REPO_ROOT
+
+        cfg = yaml.safe_load((REPO_ROOT / "config/genesets.yaml").read_text())
+        for spec in cfg["msigdb"]:
+            assert spec.get("source_key"), (
+                f"{spec['name']} has no source_key; inferring the source from "
+                "the set name is how the venous/general mix-up happened"
+            )
+
+    def test_unknown_source_key_raises_rather_than_guessing(self, monkeypatch):
+        import json
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        import p4_genesets as p4
+
+        if not p4.MSIGDB.exists():
+            pytest.skip("MSigDB cache not fetched")
+        raw = json.loads(p4.MSIGDB.read_text())
+        raw.pop("Blood Vessel Morphogenesis (GO:0048514)", None)
+        tmp = Path(str(p4.MSIGDB) + ".test")
+        tmp.write_text(json.dumps(raw))
+        monkeypatch.setattr(p4, "MSIGDB", tmp)
+        try:
+            with pytest.raises(KeyError, match="absent"):
+                p4.load_genesets()
+        finally:
+            tmp.unlink(missing_ok=True)

@@ -557,37 +557,70 @@ def pls_with_spin(
     X = expression[valid].to_numpy(dtype=float)
     X = X[:, np.isfinite(X).all(axis=0) & (X.std(axis=0) > 0)]
     y = target[valid]
-    nul = target_nulls[valid, :]
-    nul = nul[:, np.isfinite(nul).all(axis=0)][:, :max_perm]
+    nul = target_nulls[valid, :][:, :max_perm]
     n_perm = nul.shape[1]
 
-    def fit_r2(yv: np.ndarray) -> np.ndarray:
-        """Cumulative variance in ``yv`` explained, per component."""
+    def fit_r2(yv: np.ndarray, rows_: np.ndarray | None = None) -> np.ndarray:
+        """Cumulative variance in ``yv`` explained, per component.
+
+        ``rows_`` restricts the fit to a subset of parcels, so a surrogate that
+        lost parcels is compared against an observed value fitted on exactly the
+        same ones.
+        """
+        Xf = X if rows_ is None else X[rows_]
         out = np.empty(n_components)
         yc = (yv - yv.mean()) / (yv.std() or 1.0)
         for k in range(1, n_components + 1):
             p = PLSRegression(n_components=k, scale=True)
-            p.fit(X, yv)
-            pred = p.predict(X).ravel()
+            p.fit(Xf, yv)
+            pred = p.predict(Xf).ravel()
             pred = (pred - pred.mean()) / (pred.std() or 1.0)
             out[k - 1] = float(np.corrcoef(pred, yc)[0, 1] ** 2)
         return out
 
+    # Surrogates that lost a parcel are refitted on their own parcels rather
+    # than discarded, and the observed value is refitted alongside them.
+    #
+    # Discarding them was the original behaviour and it silently destroyed this
+    # analysis on any target with missing parcels: the cross-species vascular
+    # map has 17, which left *zero* complete surrogates and collapsed n_perm to
+    # 2, so every p-value it produced could only be 1/3, 2/3 or 1. gene_screen
+    # was fixed for exactly this and pls_with_spin was missed.
+    complete = np.isfinite(nul).all(axis=0)
     logger.info(
-        "PLS: %d genes, %d parcels, %d components, %d rotations",
+        "PLS: %d genes, %d parcels, %d components, %d rotations (%d complete)",
         X.shape[1],
         X.shape[0],
         n_components,
         n_perm,
+        int(complete.sum()),
     )
-    obs = fit_r2(y)
-    null = np.empty((n_perm, n_components))
+
+    obs_full = fit_r2(y)
+    obs_used = np.empty((n_perm, n_components))
+    null = np.full((n_perm, n_components), np.nan)
     for i in range(n_perm):
-        null[i] = fit_r2(nul[:, i])
+        col = nul[:, i]
+        ok = np.isfinite(col)
+        if ok.sum() < max(10, n_components + 2):
+            continue
+        if ok.all():
+            null[i] = fit_r2(col)
+            obs_used[i] = obs_full
+        else:
+            null[i] = fit_r2(col[ok], rows_=ok)
+            obs_used[i] = fit_r2(y[ok], rows_=ok)
+
+    usable = np.isfinite(null).all(axis=1)
+    if not usable.any():
+        raise ValueError("no surrogate retained enough parcels to fit PLS")
+    null, obs_used = null[usable], obs_used[usable]
+    n_perm = int(usable.sum())
+    obs = obs_full
 
     rows = []
     for k in range(n_components):
-        n_ext = int((null[:, k] >= obs[k]).sum())
+        n_ext = int((null[:, k] >= obs_used[:, k]).sum())
         rows.append(
             PLSResult(
                 component=k + 1,

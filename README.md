@@ -96,14 +96,43 @@ all — which is a useful thing to have established.
 | **1** reproduction (scoped) | ✅ pass | authors' group CBF map regenerated: r = 1.000000, median abs difference 4.5 × 10⁻¹³ over 867,944 voxels |
 | **2** target maps | ✅ done | 3 parcellations, per-column reliability released |
 | **3** expression multiverse | ✅ done | 120/120 cells × 3 parcellations, no gaps |
-| **4** gene sets, both nulls | ✅ done | 11 frozen sets × 120 pipelines × 3 stability thresholds |
+| **4** gene sets, both nulls | ⚠️ re-running | 11 frozen sets × 120 pipelines × 3 stability thresholds — see the correction note below |
 | **4b** data-driven arm | ✅ done | 15,562-gene screen over 12 pipelines, max-T family-wise correction, PLS |
-| **5** hierarchy control | ✅ done | gradient + myelin + dropout partialled |
-| **6** mediation | ✅ done | 15,840 path models, spatial null on every path |
+| **5** hierarchy control | ◐ partial | reference-map correlations and partialling done; the gene-set step §9 calls decisive is **not** yet run |
+| **6** mediation | ⚠️ re-running | 15,840 path models, spatial null on every path — inherits the Phase 4 correction |
 | **7** artifacts | ◐ partial | annotation table released; app and preprint outstanding |
 
-251 tests. `docs/WHERE_WE_ARE.md` is the plain-language running summary and the
+256 tests. `docs/WHERE_WE_ARE.md` is the plain-language running summary and the
 best entry point; `CLAUDE.md` is the specification.
+
+### Correction in progress (2026-07-30)
+
+An independent review found two defects that invalidate part of the Phase 4 and
+Phase 6 numbers. Both are fixed in code and the affected phases are being re-run;
+the result files in `results/` predate the fix and should not be used until this
+note is removed.
+
+1. **A frozen gene set was silently the wrong set.** The loader matched MSigDB
+   keys by substring, and four fetched GO terms contain "blood vessel
+   morphogenesis". All four matched, the last in dict order won, and
+   `GOBP_BLOOD_VESSEL_MORPHOGENESIS` was in fact the 5-gene *Venous* Blood Vessel
+   Morphogenesis term (GO:0048845) rather than the 53-gene general term
+   (GO:0048514). It produced plausible numbers and never raised. Sources are now
+   pinned by exact key in `config/genesets.yaml`, an absent key raises, and
+   `tests/test_datadriven.py::TestFrozenGeneSetIdentity` pins the membership. The
+   frozen declaration itself is unchanged — R5 is intact; the loader was not
+   honouring it.
+2. **Phase 4 used one target's surrogates for every target.** It loaded the
+   baseline-OEF null set once and reused it, contrary to `corr_with_null`'s
+   documented contract that surrogates belong to the map being rotated. Each
+   target now gets its own. The bias is conservative — the reused map is smoother
+   than the gene maps, so the null was too wide — meaning the reported negatives
+   were if anything understated.
+
+A third defect, in `pls_with_spin`, dropped surrogates containing any missing
+parcel. On the cross-species map, which has 17, that left **two** usable
+surrogates and p-values that could only be 1/3, 2/3 or 1. Fixed by the same
+paired approach already used in the gene screen.
 
 ---
 

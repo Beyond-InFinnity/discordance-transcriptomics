@@ -43,19 +43,22 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.data.parcellate import schaefer_gifti_for_nulls
 from src.data.targets import (
     discordance_modes,
     load_coupling_components,
     load_target_map,
 )
 from src.stats.competitive import competitive_null, differential_stability
-from src.stats.spatial import corr_with_null, fdr_bh
+from src.stats.spatial import apply_spin, corr_with_null, fdr_bh, spin_indices
 from src.utils.config import REPO_ROOT, load_config
 from src.utils.manifest import manifest
 
 logger = logging.getLogger("p4_genesets")
 
 MSIGDB = REPO_ROOT / "data/raw/genesets/msigdb_sets.json"
+
+_PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
 MACAQUE = REPO_ROOT / "data/derived/macaque/macaque_vascular_parcels.npy"
 
 
@@ -68,17 +71,32 @@ def load_genesets() -> dict[str, dict]:
             out[name] = {"genes": spec["genes"], "direction": spec.get("direction_h1")}
 
     if MSIGDB.exists():
-        want = {s["name"]: s["direction_h1"] for s in cfg_sets["msigdb"]}
         raw = json.loads(MSIGDB.read_text())
-        for key, genes in raw.items():
-            # Map the fetched library key back onto the frozen set names.
-            k = key.upper().replace(" ", "_")
-            match = next(
-                (w for w in want if w.replace("HALLMARK_", "").replace("GOBP_", "") in k),
-                None,
-            )
-            if match:
-                out[match] = {"genes": genes, "direction": want[match]}
+        # Exact key lookup, never substring matching.
+        #
+        # The previous version searched for the frozen name inside each fetched
+        # key. Four fetched terms contain "blood vessel morphogenesis" — the
+        # general GO:0048514 term plus branching, negative-regulation and venous
+        # variants — so all four matched, the loop overwrote, and the last in
+        # dict order won. GOBP_BLOOD_VESSEL_MORPHOGENESIS was therefore the
+        # 5-gene *Venous* set (GO:0048845) in every Phase 4 and Phase 6 result.
+        # It failed silently and produced plausible numbers, which is exactly
+        # the failure mode R5 exists to prevent.
+        for spec in cfg_sets["msigdb"]:
+            name, key = spec["name"], spec.get("source_key")
+            if key is None:
+                raise ValueError(
+                    f"{name} has no source_key in config/genesets.yaml. Frozen "
+                    "sets must name their source exactly; inferring it from the "
+                    "set name is how the venous/general mix-up happened."
+                )
+            if key not in raw:
+                raise KeyError(
+                    f"{name}: source_key {key!r} is absent from {MSIGDB}. "
+                    f"Available keys: {sorted(raw)}. Re-run scripts/fetch_all.py "
+                    "if the gene-set cache predates this pinning."
+                )
+            out[name] = {"genes": raw[key], "direction": spec["direction_h1"]}
     else:
         logger.warning("MSigDB sets not found at %s — curated sets only", MSIGDB)
     return out
@@ -127,7 +145,31 @@ def main() -> int:
     gsets = load_genesets()
     logger.info("frozen gene sets: %d — %s", len(gsets), ", ".join(gsets))
     targets = targets_for(cfg, parc)
-    nulls = np.load(cfg.path("nulls") / f"baseline_oef_{parc}_masked_nulls.npy")
+
+    # One surrogate set PER TARGET, built from that target's own map.
+    #
+    # This previously loaded the baseline_oef surrogates once and used them for
+    # every target. corr_with_null(x, y, nulls) documents that nulls must be
+    # surrogates of x, and here x is the gene-set score while the surrogates
+    # were of an unrelated physiological map — so the null answered a different
+    # question than the one being asked. Rotating each target and comparing the
+    # gene score against those rotations is the correct pairing, and it is what
+    # every other phase already does.
+    n_spec = _PARC_SPEC.get(parc, (200, 7))
+    sidx = spin_indices(
+        len(next(iter(targets.values()))),
+        atlas=cfg.parcellation.primary.space,
+        density=cfg.parcellation.primary.density,
+        parcellation=schaefer_gifti_for_nulls(
+            n_spec[0], n_spec[1], cfg.parcellation.primary.density, "L"
+        ),
+        n_perm=cfg.nulls.n_perm,
+        seed=cfg.seed,
+        method=cfg.nulls.surface_method,
+        cache_path=cfg.path("nulls")
+        / f"spin_indices_{parc}_{cfg.parcellation.primary.density}.npy",
+    )
+    target_nulls = {k: apply_spin(v, sidx) for k, v in targets.items()}
 
     # Differential stability from the primary pipeline's per-donor matrices.
     # Computed once: it is a property of the atlas and donors, not of the cell.
@@ -168,7 +210,11 @@ def main() -> int:
                 for tname, y in targets.items():
                     ok = np.isfinite(score) & np.isfinite(y)
                     sp = corr_with_null(
-                        score[ok], y[ok], nulls=nulls[ok, :], method=cfg.stats.correlation
+                        y[ok],
+                        score[ok],
+                        nulls=target_nulls[tname][ok, :],
+                        method=cfg.stats.correlation,
+                        null_method=cfg.nulls.surface_method,
                     )
                     rows.append(
                         {
