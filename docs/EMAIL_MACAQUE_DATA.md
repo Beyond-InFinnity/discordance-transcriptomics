@@ -121,7 +121,7 @@ genuinely appropriate, not a bribe, and it substantially raises reply rates.
 > Any resulting work would of course cite the paper, and I would be glad to
 > acknowledge your contribution or discuss involvement if the direction is of
 > interest to you. The analysis code is public at
-> https://github.com/Beyond-InFinnity/discordance-transcriptomics.
+> github.com/Beyond-InFinnity/discordance-transcriptomics
 >
 > With thanks for your time,
 >
