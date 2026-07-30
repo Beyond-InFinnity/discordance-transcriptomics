@@ -91,41 +91,65 @@ genuinely appropriate, not a bribe, and it substantially raises reply rates.
 
 ---
 
-## Draft
+## Draft — send as plain text
 
-> **Subject:** Request for processed regional expression matrix — Bo et al. 2023 macaque brain transcriptome
->
-> Dear Dr Wang,
->
-> I am writing to ask whether you would be willing to share the processed
-> region-by-gene expression matrix underlying Bo et al. (2023), *Nat Commun*
-> 14:1499 — the 97 cortical regions × 23,613 genes described in your Methods.
->
-> I have checked the public sources and believe only raw reads are deposited:
-> SRA PRJNA905082 holds the sequencing data, and the Zenodo and GitHub releases
-> contain the analysis code. The Source Data file includes a 408-gene
-> neurotransmitter panel across regions, but not the full matrix. If a processed
-> version exists, it would save considerable reprocessing.
->
-> The reason I ask: I am building a cross-species model to estimate cortical
-> microvascular density in the human brain from gene expression. Macaque is the
-> only species where both a regional transcriptome and directly measured cortical
-> vascular density (Autio et al., ferumoxytol-weighted laminar MRI) are available,
-> so your dataset paired with theirs is the training set the approach depends on.
-> Human has the transcriptome but no comparable vascular map, which is the gap the
-> work aims to fill.
->
-> If it is straightforward, the region key mapping your labels to D99 identifiers
-> would also be very helpful.
->
-> Any resulting work would of course cite the paper, and I would be glad to
-> acknowledge your contribution or discuss involvement if the direction is of
-> interest to you. The analysis code is public at
-> github.com/Beyond-InFinnity/discordance-transcriptomics
->
-> With thanks for your time,
->
-> Connor Finnerty
+**To:** guangzhong.wang@sinh.ac.cn
+**Cc:** zheng.wang@pku.edu.cn, guangzhong.wang@picb.ac.cn
+
+**Subject:** Data request - processed region-by-gene matrix from Bo et al. 2023 (Nat Commun 14:1499)
+
+```
+Dear Dr Guang-Zhong Wang and Dr Zheng Wang,
+
+I am writing to ask whether you would be willing to share the processed
+region-by-gene expression matrix underlying Bo et al. 2023, Nat Commun
+14:1499 - the 97 cortical regions by 23,613 genes described in your Methods.
+
+I have looked through the public sources and believe only raw reads are
+deposited: SRA PRJNA905082 holds the sequencing data, and the Zenodo and
+GitHub releases contain the analysis code. The Source Data file includes a
+408-gene neurotransmitter panel across regions, but not the full matrix.
+
+The reason I ask is that I am working on a cross-species model to estimate
+cortical microvascular density in the human brain from gene expression.
+Macaque appears to be the only species where both a regional transcriptome
+and directly measured cortical vascular density are available - yours paired
+with the ferumoxytol laminar MRI maps from Autio and colleagues. Human has
+the transcriptome but no comparable vascular measurement, which is the gap
+I am trying to address.
+
+If it is easy to include, the key mapping your region labels to D99
+identifiers would also be very helpful.
+
+If sharing the matrix is not straightforward, I am equally happy to
+reprocess from SRA - in that case any note on the alignment and
+quantification settings you used would be valuable, so that my results stay
+comparable to yours.
+
+Any resulting work would of course cite the paper, and I would be glad to
+acknowledge your contribution or to discuss involvement if the direction is
+of interest. My analysis code is public at
+github.com/Beyond-InFinnity/discordance-transcriptomics
+
+With thanks for your time,
+
+Connor Finnerty
+infinnity12@gmail.com
+```
+
+**Why it is shaped this way**
+
+- The ask is the first sentence. A busy PI should know what is wanted before
+  deciding whether to keep reading.
+- The paragraph on what you already checked prevents the most likely reply,
+  which is a pointer back to SRA.
+- The offer to reprocess from SRA gives them a near-zero-cost way to help even
+  if the matrix is awkward to dig out, and it signals you are not asking to be
+  carried.
+- No affiliation is claimed and none is explained. The missing institution line
+  is itself the honest signal; drawing attention to it only invites a filter.
+  Answer directly if asked.
+- No greeting flourishes, no adjectives about significance. Around 250 words.
 
 ---
 
