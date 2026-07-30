@@ -428,6 +428,15 @@ def mediation(
     # With X and M correlated at 0.93 that is a 7.5x mismatch, and a b path that
     # is null by construction comes out at p = 0.002. The test
     # ``test_b_null_is_calibrated_under_collinearity`` is what caught it.
+    # Note on the n-mismatch: _nan_corr_cols scores each draw on its own valid
+    # parcels while the observed coefficient uses the full valid set, so a draw
+    # that lost a parcel is compared against an observed value that kept it.
+    # Here that costs at most one parcel in 96, and only in the third of cells
+    # using missing=None (the other strategies fill every parcel). The gene
+    # screen in src/expression/datadriven.py faces the same issue at a scale
+    # where it matters — up to 17 parcels — and recomputes the observed value per
+    # draw to remove it entirely. If a target with substantial missingness is
+    # ever used as a mediator or outcome here, adopt that approach.
     r_my_yn = _nan_corr_cols(yn, mv)
     r_xy_yn = _nan_corr_cols(yn, xv)
     _, b_from_y, _, cp_from_y = path_coefficients(r_xm, r_xy_yn, 0.0)
