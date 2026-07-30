@@ -3,7 +3,7 @@
 A plain-language running summary. Updated as work proceeds. If you read one
 document in this repository, read this one.
 
-Last updated: 2026-07-27.
+Last updated: 2026-07-29.
 
 ---
 
@@ -55,8 +55,9 @@ for any question about blood vessels.
 | Reproduce the original paper exactly | done | passed, exactly |
 | Build the region-by-region dataset | done | released, version 0.9.2 |
 | Rule out the main statistical trap | done | trap does not apply |
-| Gene expression analysis | **not started** | — |
-| Mediation model | **not started** | — |
+| Build all 120 processing pipelines | done | 120/120, no gaps |
+| Gene expression analysis | running | preview: no gene set predicts discordance |
+| Mediation model | running | the middle link is already known to be absent |
 
 ---
 
@@ -87,6 +88,89 @@ at 0.09. Blood flow does better at 0.33, and blood volume best at 0.46. Since
 oxygen metabolism is calculated *from* the other quantities, errors compound —
 which is a plausible explanation, and also a warning about how much weight that
 map can carry.
+
+---
+
+## The mediation model, and why we already know how it comes out
+
+The project's second pre-specified hypothesis is a chain of two links:
+
+```
+vascular gene expression  ->  baseline oxygen extraction  ->  discordance
+        link a                        link b
+```
+
+Both links have now been measured separately, and they behave differently.
+
+**Link a is real and robust.** Vascular gene programmes do predict baseline
+oxygen extraction — pericyte and mural-cell genes at −0.39, angiogenesis genes at
+−0.37, both surviving a null built from random gene sets matched on size *and*
+cross-donor consistency. More vascular gene expression, lower extraction. That is
+sensible biology and it is the strongest molecular result the project has.
+
+**Link b is absent.** Baseline oxygen extraction does not predict where
+discordance happens: −0.13, and a spatial-null p-value of 0.36. Not a small
+effect with a big error bar — a small effect in a test that could have found 0.33
+if it were there.
+
+A chain cannot be stronger than its weakest link. With link b at zero, there is
+nothing for an indirect effect to travel through, so the expected result is a null
+mediation. **We are fitting it anyway**, because a pre-specified model reported as
+fitted — with the failing link named rather than the whole thing written off as
+"no mediation found" — is a result. Quietly not running it would not be.
+
+Note what this does *not* say. Epp and colleagues report that discordant voxels
+differ in baseline extraction, and that is a within-subject comparison between
+two sets of voxels. Ours is a rank correlation across 100 regions of group
+medians. Both can be true: extraction can differ between discordant and
+concordant tissue without extraction ranking regions by how often they go
+discordant. We are not contradicting them; we are reporting that the spatial
+version of the claim does not hold.
+
+---
+
+## Two statistical errors caught before they produced results
+
+Worth recording, because both would have produced a confident wrong answer rather
+than a crash, and both were caught by tests written against the method rather
+than by inspecting output.
+
+**Rotating the wrong map.** Testing link b requires a null. The intuitive choice
+is to rotate the extraction map. That is wrong: the coefficient for link b is
+divided by a factor that grows as the exposure and the mediator overlap, and a
+rotated mediator no longer overlaps with anything — so the observed number
+carries an inflation its null does not. In a deliberately-constructed case the
+mismatch was 7.5-fold, and a link that was *zero by construction* came back at
+p = 0.002. Rotating the outcome instead leaves the overlap untouched, so both
+sides are inflated equally.
+
+**A test that manufactures mediation from one real link.** The conventional way
+to test an indirect effect multiplies the two path coefficients and compares the
+product against a null. Built the usual way, that null is destroyed whenever the
+first link is destroyed — so a real link a plus a pure-noise link b still
+returned p = 0.002. The headline test is now joint significance: both links must
+clear the threshold independently. It is deliberately conservative, which is the
+right direction for a pre-specified mechanistic claim.
+
+---
+
+## One correction to the released dataset
+
+`discordance_risk` — the column combining both discordance modes — was labelled
+**stable** while its split-half reliability is 0.49, below the 0.5 floor this
+project set for itself. It is now labelled `low_reliability`, and the labels are
+derived from the Phase 0 measurement rather than maintained by hand, so they
+cannot drift apart again.
+
+The reason the combined column is worse than its parts is worth understanding:
+the two modes sit in different places in the brain, so adding them cancels signal.
+The total (0.49) is *less* reliable than either the extraction mode (0.58) or the
+overshoot mode (0.60). Use the mode columns.
+
+Every measurable column now publishes its reliability alongside its value, which
+lets anyone using the dataset correct for it instead of assuming it is perfect. A
+correlation against a column with reliability 0.49 is dragged about 30% toward
+zero before any biology is involved.
 
 ---
 
