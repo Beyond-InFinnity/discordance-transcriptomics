@@ -79,9 +79,46 @@ Our maps do not — the correlation is 0.04. Whatever this is, it is not that.
 
 **But nothing correlates with anything.** Not glucose metabolism, oxygen
 metabolism, blood flow, evolutionary expansion, or the dominant pattern of gene
-expression. We checked whether that is a power problem: it is not. Every map
-could have detected a true correlation of 0.34 or larger, and the best of them
-anything above 0.25. Nothing came close. These are real negatives.
+expression.
+
+**How much of that is a power problem — corrected 2026-07-30.** An earlier
+version of this document said every map could have detected a true correlation
+of 0.34 or larger. That figure assumed the *gene* side of each comparison was
+measured perfectly. It is not, and the assumption was doing real work.
+
+Measuring it: build each gene set's score map separately in each of the five
+post-mortem donors, and see how well those five maps agree. The answer varies
+enormously by set, and not in the direction one might guess — small curated
+cell-type sets beat large curated pathway collections, because averaging 200
+loosely related genes averages away spatial structure rather than noise.
+
+Feeding that into the same calculation gives the true correlation each set could
+actually have detected against the extraction-mode map:
+
+| gene set | reproducibility | smallest detectable true effect |
+|---|---:|---:|
+| glucose/lactate transport | 0.67 | 0.41 |
+| endothelial | 0.59 | 0.43 |
+| angiogenesis | 0.58 | 0.44 |
+| pericyte/mural | 0.56 | 0.44 |
+| blood vessel morphogenesis | 0.44 | 0.50 |
+| oxidative phosphorylation | 0.23 | 0.69 |
+| hypoxia | 0.13 | 0.94 |
+
+So the honest statement is two statements. **For the vascular sets — the ones
+the hypothesis is actually about — we can exclude true effects above roughly
+0.44.** Observed values were near 0.13. That is a real exclusion, weaker than
+previously claimed but not empty.
+
+**For the three large pathway collections it is not an exclusion at all.**
+Hypoxia would have needed a true correlation of 0.94 to register. Its negative
+carries no information and should not be reported as though it does.
+
+**The positive finding gets stronger under the same correction.** Noise
+suppresses observed correlations, so removing it raises the estimate of the
+underlying relationship: pericyte/mural genes against baseline oxygen extraction
+go from −0.39 observed to **−0.53** as an estimate of the true effect, and
+angiogenesis from −0.36 to −0.47.
 
 **Our oxygen-metabolism map disagrees with the PET gold standard.** They agree
 at 0.09. Blood flow does better at 0.33, and blood volume best at 0.46. Since

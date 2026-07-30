@@ -123,7 +123,39 @@ wb_command -version   # must succeed before proceeding
 - AHBA microarray download: **~4 GB** (abagen caches to `~/.abagen/` or `$ABAGEN_DATA`).
 - ds004873: check size before `datalad get`; fetch only the derivatives you need.
 - neuromaps reference maps: ~1 GB.
-- **This project is CPU-bound and laptop-scale.** The multiverse and permutation tests parallelise across cores. **Do not write GPU code.** If a task seems to need a GPU, you have misunderstood the task.
+
+**Available hardware** (as of 2026-07-30):
+
+| host | cores | RAM | GPU |
+|---|---|---|---|
+| laptop | 16 | 15 GB | RTX 3070 Laptop, 8 GB |
+| `claude-machine` (ssh) | 4 | 31 GB | GTX 1080 Ti, 11 GB |
+
+**The binding constraint has been memory, not cores and not FLOPs.** A single
+abagen extraction peaks near 7 GB; on the laptop that meant 24 of 120 multiverse
+cells were killed by the kernel, all in the same corner of the grid. Moving to
+the 31 GB host completed all 120 with zero kills. Plan work around peak RSS per
+process first, parallelism second.
+
+**GPU work is now permitted, but only where the shape of the problem justifies
+it.** The earlier blanket ban was right about the work that existed then and
+wrong as a permanent rule. The test is whether the step is dense linear algebra
+over arrays large enough to amortise the transfer:
+
+- **Justified.** Vertex-level analysis (10,242 vertices/hemisphere rather than
+  100 parcels), permutation budgets in the hundreds of thousands, PLS or
+  regression over the full gene x vertex matrix. These are matrix products with
+  both dimensions in the thousands.
+- **Not justified.** abagen extraction (file I/O and pandas), anything shelling
+  out to `wb_command`, the competitive null (10,000 small resamples bound by
+  Python overhead), the parcel-level spin test (a 100 x 10,000 product that is
+  already microseconds — the transfer costs more than the compute).
+
+The old warning still applies in spirit and is worth keeping in mind: **do not
+invent GPU work to justify the hardware.** If a step is fast enough on CPU, leave
+it there. Anything moved to a GPU must produce numerically identical results to
+the CPU path, and that equivalence must be asserted in a test — float32
+accumulation over long reductions is a real hazard for permutation counting.
 
 ---
 
