@@ -2,11 +2,18 @@
 
 ## Who to write to
 
-**Primary: Guang-Zhong Wang** — `guangzhong.wang@picb.ac.cn`
+**Primary: Guang-Zhong Wang** — `guangzhong.wang@sinh.ac.cn`
 Shanghai Institute of Nutrition and Health (SINH), CAS. He is the computational
 and transcriptomics lead, and the analysis code is published under his lab's
 GitHub organisation (`WangLab-SINH`), so the processed matrix is almost certainly
 his to send.
+
+> **The address printed in the paper is stale.** It gives
+> `guangzhong.wang@picb.ac.cn`, but PICB (the CAS-MPG Partner Institute for
+> Computational Biology) merged into SINH around 2020. The SINH staff page lists
+> `guangzhong.wang@sinh.ac.cn` — same local part, current domain. Send to the
+> sinh.ac.cn address; adding the picb one as a second recipient costs nothing if
+> it still forwards.
 
 **CC: Zheng Wang** — `zheng.wang@pku.edu.cn` (Peking University)
 Co-corresponding author, the imaging side of the paper. Worth copying because the
@@ -121,6 +128,28 @@ genuinely appropriate, not a bribe, and it substantially raises reply rates.
 > Connor Finnerty
 
 ---
+
+## Will Gmail even reach them?
+
+Yes. The Great Firewall blocks traffic *from inside China to Google*, which is
+why people there cannot open Gmail without a VPN. That is the opposite direction
+from this. Google's servers connect outbound to the Chinese mail servers, the
+recipients read their mail on their own institutional systems inside China, and
+replies come back the same way. Nothing in the path is a blocked service.
+
+**The real risk is spam filtering, and it fails silently** — no bounce, no
+delivery, indistinguishable from being ignored. Design around it:
+
+- Plain text, no attachments on first contact.
+- Minimise links. The GitHub URL in the draft is a mild spam signal; either drop
+  it or write it bare, without the protocol prefix.
+- Send to all three addresses at once — different servers, different filters.
+- Keep the subject specific and dull.
+
+Backup channels, in order: **ResearchGate** (works from China, academics check
+it); then **Jie Li or Tingting Bo** directly, since early-career authors reply
+faster and tend to have less aggressive filters. Not LinkedIn — it discontinued
+its China service in 2023.
 
 ## Practical notes
 
