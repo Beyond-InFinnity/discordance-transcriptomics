@@ -180,9 +180,19 @@ def corr_with_null(
     # collapse into one matrix product on ranked data: identical numerically,
     # several orders of magnitude faster. The per-column path is retained for
     # the ragged case.
-    paired_obs = not (nulls_prepared or bool(np.isfinite(nv).all()))
+    # Whether the block is usable as-is. Note this is checked even when the
+    # caller passes nulls_prepared=True.
+    #
+    # prepare_nulls() returns a NaN-bearing block untouched, because ranking it
+    # would be meaningless. A caller that then asserts nulls_prepared=True would,
+    # if the flag were trusted blindly, send that block down the fast path and
+    # silently reinstate exactly the bug the ragged path exists to fix — two
+    # individually-correct changes cancelling to produce a new one. That is how
+    # the cross-species control came back at p = 1/3 after both were applied.
+    clean = bool(np.isfinite(nv).all())
+    paired_obs = not clean
     obs_rhos = None
-    if nulls_prepared or bool(np.isfinite(nv).all()):
+    if clean:
         yr = sps.rankdata(yv) if method == "spearman" else yv
         if nulls_prepared:
             nc = nv  # already ranked and centred by prepare_nulls()

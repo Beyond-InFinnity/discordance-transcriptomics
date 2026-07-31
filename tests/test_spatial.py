@@ -492,3 +492,56 @@ class TestRaggedSurrogatesInCorrWithNull:
         assert corr_with_null(x, y, nulls=nulls).p_spin == pytest.approx(
             corr_with_null(x, y, nulls=nulls).p_spin
         )
+
+
+class TestPreparedAndRaggedTogether:
+    """Two individually-correct fixes that cancelled each other.
+
+    prepare_nulls() returns a NaN-bearing block untouched, since ranking it is
+    meaningless. A caller then passing nulls_prepared=True would, if the flag
+    were trusted, route that block down the fast path and silently reinstate the
+    exact bug the ragged path exists to fix.
+
+    That combination shipped, and the cross-species control came back at
+    p = 1/3 — the n=2 signature — after both fixes were applied.
+    """
+
+    @pytest.fixture
+    def ragged(self, rng):
+        n, n_perm = 100, 400
+        x = rng.normal(size=n)
+        y = x * 0.7 + rng.normal(size=n) * 0.6
+        x[rng.choice(n, 17, replace=False)] = np.nan
+        return x, y, x[rng.integers(0, n, size=(n, n_perm))]
+
+    def test_prepare_nulls_passes_nan_through(self, ragged):
+        from src.stats.spatial import prepare_nulls
+
+        _x, _y, nulls = ragged
+        np.testing.assert_array_equal(prepare_nulls(nulls), nulls)
+
+    def test_flag_does_not_override_a_nan_block(self, ragged):
+        """The flag is a hint, not a licence to skip the check."""
+        from src.stats.spatial import prepare_nulls
+
+        x, y, nulls = ragged
+        res = corr_with_null(x, y, nulls=prepare_nulls(nulls), nulls_prepared=True)
+        assert res.n_perm > 0.9 * nulls.shape[1], (
+            f"only {res.n_perm} draws used; the ragged path was skipped"
+        )
+
+    def test_p_not_quantised_to_thirds(self, ragged):
+        """The exact symptom that exposed it."""
+        from src.stats.spatial import prepare_nulls
+
+        x, y, nulls = ragged
+        p = corr_with_null(x, y, nulls=prepare_nulls(nulls), nulls_prepared=True).p_spin
+        assert p not in (1 / 3, 2 / 3, 1.0)
+
+    def test_prepared_and_unprepared_agree_on_ragged_data(self, ragged):
+        from src.stats.spatial import prepare_nulls
+
+        x, y, nulls = ragged
+        a = corr_with_null(x, y, nulls=nulls)
+        b = corr_with_null(x, y, nulls=prepare_nulls(nulls), nulls_prepared=True)
+        assert a.p_spin == b.p_spin and a.n_perm == b.n_perm
