@@ -92,6 +92,21 @@ def main() -> int:
     coup, _ = load_subject_target_matrix(cfg, "coupling_n", parc, masked=True)
     mats["coupling angle"] = coup
 
+    # The baseline physiological maps. These were omitted originally, and the
+    # omission mattered: baseline CMRO2 is the one quantity whose agreement with
+    # an independent method fails (rho = 0.09 against Raichle PET), and without
+    # its reliability there is no way to tell a bad map from an attenuated one.
+    for q, label in (
+        ("baseline_cmro2", "baseline CMRO2"),
+        ("baseline_cbf", "baseline CBF"),
+        ("baseline_cbv", "baseline CBV"),
+    ):
+        try:
+            m, _ = load_subject_target_matrix(cfg, q, parc, masked=True)
+            mats[label] = m
+        except (NotImplementedError, FileNotFoundError) as exc:
+            logger.warning("%s unavailable: %s", label, exc)
+
     d_cbf, d_cmro2, _subs, _ = load_coupling_components(parc, masked=True)
     # Mode fractions are per-subject indicators, so a "subject map" is that
     # subject's 0/1 discordance pattern across parcels.

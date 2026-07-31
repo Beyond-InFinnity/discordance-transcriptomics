@@ -1,11 +1,11 @@
 {
   "name": "p0_dynamic_range_schaefer200x7",
-  "created_utc": "2026-07-27T20:20:00Z",
-  "git_sha": "e9076363fcf3f021c8485451cd763f2ed58ef79c",
+  "created_utc": "2026-07-31T20:03:59Z",
+  "git_sha": "970ea2f07ac596aea73df2601634f6b2315e267b",
   "git_dirty": true,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 0.041,
+  "wall_clock_sec": 0.027,
   "python": "3.11.15",
   "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
   "packages": {
@@ -29,6 +29,9 @@
     "detectable_true_rho": {
       "baseline OEF": 0.246,
       "coupling angle": 0.301,
+      "baseline CMRO2": 0.247,
+      "baseline CBF": 0.249,
+      "baseline CBV": 0.247,
       "discordance (total)": 0.337,
       "discordance (extraction)": 0.331,
       "discordance (overshoot)": 0.313
@@ -36,6 +39,9 @@
     "signal_fraction": {
       "baseline OEF": 0.989,
       "coupling angle": 0.663,
+      "baseline CMRO2": 0.984,
+      "baseline CBF": 0.964,
+      "baseline CBV": 0.986,
       "discordance (total)": 0.528,
       "discordance (extraction)": 0.546,
       "discordance (overshoot)": 0.61

@@ -42,19 +42,19 @@ from .parcellate import (
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "TargetMeta",
     "DERIVATIVE_PATTERNS",
-    "inspect_derivatives",
+    "DiscordanceModes",
+    "TargetMeta",
     "coupling_ratio_angle",
     "coupling_ratio_signed_log",
-    "load_target_map",
-    "load_subject_target_matrix",
-    "load_authors_group_map",
-    "load_coupling_components",
     "discordance_fraction",
     "discordance_modes",
-    "DiscordanceModes",
+    "inspect_derivatives",
+    "load_authors_group_map",
+    "load_coupling_components",
     "load_dropout_proxy",
+    "load_subject_target_matrix",
+    "load_target_map",
 ]
 
 
@@ -346,6 +346,7 @@ def coupling_ratio_signed_log(
 # ---------------------------------------------------------------------------
 DATA_ROOT = REPO_ROOT / "data" / "raw" / "ds004873"
 
+
 def _require_pattern(key: str) -> str:
     pattern = DERIVATIVE_PATTERNS.get(key)
     if pattern is None:
@@ -543,7 +544,7 @@ def discordance_fraction(
     directions. BOLD tracks deoxyhaemoglobin, which to first order falls when
     CBF outpaces oxygen consumption, so
 
-        sign(ΔBOLD) ≈ sign(ΔCBF − ΔCMRO₂)
+        sign(dBOLD) ~ sign(dCBF - dCMRO2)
 
     and a parcel is discordant for a subject when that differs from
     ``sign(ΔCMRO₂)``. Working the two cases through, both reduce to the same
@@ -561,7 +562,7 @@ def discordance_fraction(
        vacuous: 76 of 100 parcels have both quantities rising, so the dominant
        discordance mode in this data — CMRO₂ rising faster than CBF — was
        invisible to it, and the resulting column carried essentially no signal
-       (Spearman −0.04 against the coupling angle). The first-order BOLD sign
+       (Spearman -0.04 against the coupling angle). The first-order BOLD sign
        assumption above is standard and buys the actual phenomenon.
 
     Parameters
@@ -608,7 +609,16 @@ def load_subject_target_matrix(
     data : ndarray, shape (n_subjects, n_parcels)
     meta : TargetMeta
     """
-    if target in ("baseline_oef", "baseline_cbv", "baseline_cbf"):
+    if target == "baseline_cmro2":
+        # Wired late, and its absence mattered. Every other target had its
+        # split-half reliability measured in Phase 0; baseline CMRO2 did not,
+        # because no per-subject loader existed for it. That left the one
+        # positive control this project fails — our CMRO2 against the PET gold
+        # standard, rho = 0.09 — with no way to tell a bad map from an
+        # attenuated one. Reliability is the missing term in that judgement.
+        data, subs, paths = _stack_subjects("control_cmro2", parcellation, masked)
+
+    elif target in ("baseline_oef", "baseline_cbv", "baseline_cbf"):
         # Baseline cerebral blood volume is the closest available proxy for
         # vascular density: more vessels per unit tissue means more blood
         # volume. The protocol names it as an alternative mediator, so testing
@@ -692,9 +702,7 @@ def load_authors_group_map(
     values : ndarray
     meta : TargetMeta
     """
-    fname = (
-        f"N40_cond-control_space-MNI152_median_GMR2pCBVmasked_{quantity}.nii.gz"
-    )
+    fname = f"N40_cond-control_space-MNI152_median_GMR2pCBVmasked_{quantity}.nii.gz"
     path = DATA_ROOT / "derivatives" / fname
     if not path.exists():
         raise FileNotFoundError(f"{path} not found; fetch ds004873 derivatives")

@@ -1,0 +1,46 @@
+{
+  "name": "x2_cmro2_audit_schaefer200x7",
+  "created_utc": "2026-07-31T20:05:22Z",
+  "git_sha": "970ea2f07ac596aea73df2601634f6b2315e267b",
+  "git_dirty": true,
+  "config_hash": "34917b24a35f",
+  "seed": 42,
+  "wall_clock_sec": 0.022,
+  "python": "3.11.15",
+  "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
+  "packages": {
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "pandas": "2.3.3",
+    "nibabel": "5.4.2",
+    "nilearn": "0.14.0",
+    "abagen": "0.1.4+15.gdc4a007",
+    "neuromaps": "0.0.7",
+    "netneurotools": "0.3.0",
+    "brainspace": "0.2.1",
+    "statsmodels": "0.14.6",
+    "scikit-learn": "1.8.0",
+    "pingouin": "0.6.1"
+  },
+  "inputs": {},
+  "results": {
+    "observed_rho_vs_pet": -0.13836183618361836,
+    "reliability_ours": 0.9835780613784072,
+    "max_observable_if_pet_perfect": 0.9917550410148703,
+    "contamination": {
+      "discordance_extraction": -0.3063,
+      "discordance_overshoot": 0.249,
+      "coupling_angle": 0.017,
+      "dropout_snr_coverage": -0.284
+    },
+    "contamination_p": {
+      "discordance_extraction": 0.0317,
+      "discordance_overshoot": 0.1089,
+      "coupling_angle": 0.8897,
+      "dropout_snr_coverage": 0.0326
+    }
+  },
+  "notes": [
+    "Our baseline CMRO2 has split-half reliability 0.984, so its disagreement with the Raichle PET reference is not attenuation. The two methods measure the same nominal quantity and disagree systematically."
+  ]
+}
