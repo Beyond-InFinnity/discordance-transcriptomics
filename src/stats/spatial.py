@@ -33,6 +33,7 @@ __all__ = [
     "corr_with_null",
     "fdr_bh",
     "make_nulls",
+    "prepare_nulls",
     "spin_indices",
 ]
 
@@ -98,6 +99,7 @@ def corr_with_null(
     nulls: np.ndarray,
     method: CorrMethod = "spearman",
     null_method: str = "unspecified",
+    nulls_prepared: bool = False,
 ) -> SpatialCorrResult:
     """Correlate two parcel-level brain maps against a spatial null.
 
@@ -178,13 +180,13 @@ def corr_with_null(
     # collapse into one matrix product on ranked data: identical numerically,
     # several orders of magnitude faster. The per-column path is retained for
     # the ragged case.
-    if bool(np.isfinite(nv).all()):
-        if method == "spearman":
-            nr = sps.rankdata(nv, axis=0)
-            yr = sps.rankdata(yv)
+    if nulls_prepared or bool(np.isfinite(nv).all()):
+        yr = sps.rankdata(yv) if method == "spearman" else yv
+        if nulls_prepared:
+            nc = nv  # already ranked and centred by prepare_nulls()
         else:
-            nr, yr = nv, yv
-        nc = nr - nr.mean(axis=0)
+            nr = sps.rankdata(nv, axis=0) if method == "spearman" else nv
+            nc = nr - nr.mean(axis=0)
         yc = yr - yr.mean()
         denom = np.linalg.norm(nc, axis=0) * np.linalg.norm(yc)
         with np.errstate(invalid="ignore", divide="ignore"):
@@ -298,6 +300,31 @@ def make_nulls(
         np.save(cache_path, out)
         logger.info("cached nulls to %s", cache_path)
     return out
+
+
+def prepare_nulls(nulls: np.ndarray, method: CorrMethod = "spearman") -> np.ndarray:
+    """Rank-transform and centre a surrogate block once, for reuse.
+
+    :func:`corr_with_null` spends about 86% of its time ranking the surrogate
+    block, and callers that sweep many maps against the *same* surrogates repeat
+    that work on every call — Phase 4 ranked one (100 x 10,000) array roughly
+    20,000 times per run to get 20,000 identical results.
+
+    Pass the output as ``nulls`` together with ``nulls_prepared=True``. The
+    result is numerically identical; only the redundant ranking is skipped.
+
+    Returns
+    -------
+    ndarray
+        Column-centred ranks, or column-centred values when ``method`` is
+        ``pearson``. NaN-bearing blocks are returned untouched, since those take
+        the per-column path where no reuse is possible.
+    """
+    nulls = np.asarray(nulls, dtype=float)
+    if not bool(np.isfinite(nulls).all()):
+        return nulls
+    nr = sps.rankdata(nulls, axis=0) if method == "spearman" else nulls
+    return nr - nr.mean(axis=0)
 
 
 def spin_indices(

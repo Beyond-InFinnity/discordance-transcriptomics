@@ -51,7 +51,13 @@ from src.data.targets import (
 )
 from src.expression.multiverse import cell_path, multiverse_dir
 from src.stats.competitive import competitive_null, differential_stability
-from src.stats.spatial import apply_spin, corr_with_null, fdr_bh, spin_indices
+from src.stats.spatial import (
+    apply_spin,
+    corr_with_null,
+    fdr_bh,
+    prepare_nulls,
+    spin_indices,
+)
 from src.utils.config import REPO_ROOT, load_config
 from src.utils.manifest import manifest
 
@@ -195,13 +201,23 @@ def main() -> int:
         stability.to_frame().to_csv(stab_path)
     logger.info("differential stability for %d genes", len(stability))
 
+    # Both loop-invariants hoisted out of the 120-cell loop.
+    keep_sets = {
+        thr: (set(stability[stability >= thr].index) if thr > 0 else None)
+        for thr in (0.0, 0.1, 0.2)
+    }
+    prepared: dict[tuple[str, bytes], np.ndarray] = {}
+
     rows = []
     for n_cell, (_, cell) in enumerate(idx.iterrows(), 1):
         exp_all = pd.read_parquet(cell_path(mv_dir, cell))
         exp = exp_all.iloc[:100]  # left hemisphere
         for thr in (0.0, 0.1, 0.2):
-            keep = stability[stability >= thr].index if thr > 0 else exp.columns
-            sub = exp[[c for c in exp.columns if c in set(keep)]]
+            # set() hoisted out of the comprehension. Inside it, Python
+            # rebuilt a ~7,000-element set for each of 15,562 columns — 22
+            # seconds per cell against 0.02 once hoisted.
+            keep = keep_sets[thr]
+            sub = exp if keep is None else exp[[c for c in exp.columns if c in keep]]
             if sub.shape[1] < 100:
                 continue
             for gname, gspec in gsets.items():
@@ -212,12 +228,23 @@ def main() -> int:
                 score = z.mean(axis=1).to_numpy()
                 for tname, y in targets.items():
                     ok = np.isfinite(score) & np.isfinite(y)
+                    # Rank the surrogate block once per (target, mask) rather
+                    # than once per gene set: the same array otherwise gets
+                    # ranked thousands of times to identical effect.
+                    pkey = (tname, ok.tobytes())
+                    pn = prepared.get(pkey)
+                    if pn is None:
+                        pn = prepare_nulls(
+                            target_nulls[tname][ok, :], cfg.stats.correlation
+                        )
+                        prepared[pkey] = pn
                     sp = corr_with_null(
                         y[ok],
                         score[ok],
-                        nulls=target_nulls[tname][ok, :],
+                        nulls=pn,
                         method=cfg.stats.correlation,
                         null_method=cfg.nulls.surface_method,
+                        nulls_prepared=True,
                     )
                     rows.append(
                         {

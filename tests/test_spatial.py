@@ -353,3 +353,78 @@ class TestNullGeometryResolution:
         assert int(np.asarray(dk.agg_data()).max()) != int(
             np.asarray(sch.agg_data()).max()
         )
+
+
+class TestPreparedNulls:
+    """prepare_nulls() is a pure speed optimisation and must change no number.
+
+    corr_with_null spent ~86% of its time ranking the surrogate block, and
+    Phase 4 ranked the same (100 x 10,000) array roughly 20,000 times per run
+    for 20,000 identical results. Reuse is only safe if it is bit-identical.
+    """
+
+    def test_bit_identical_to_the_unprepared_path(self, maps):
+        from src.stats.spatial import prepare_nulls
+
+        x, y, nulls = maps
+        plain = corr_with_null(x, y, nulls=nulls)
+        fast = corr_with_null(x, y, nulls=prepare_nulls(nulls), nulls_prepared=True)
+        assert fast.rho == plain.rho
+        assert fast.p_spin == plain.p_spin
+        assert fast.n_perm == plain.n_perm
+
+    def test_identical_across_many_random_maps(self, rng):
+        from src.stats.spatial import prepare_nulls
+
+        n, n_perm = 60, 300
+        base = rng.normal(size=n)
+        nulls = np.column_stack([rng.permutation(base) for _ in range(n_perm)])
+        pre = prepare_nulls(nulls)
+        for _ in range(25):
+            y = rng.normal(size=n)
+            assert (
+                corr_with_null(base, y, nulls=pre, nulls_prepared=True).p_spin
+                == corr_with_null(base, y, nulls=nulls).p_spin
+            )
+
+    def test_pearson_path_also_identical(self, maps):
+        from src.stats.spatial import prepare_nulls
+
+        x, y, nulls = maps
+        a = corr_with_null(x, y, nulls=nulls, method="pearson")
+        b = corr_with_null(
+            x,
+            y,
+            nulls=prepare_nulls(nulls, "pearson"),
+            nulls_prepared=True,
+            method="pearson",
+        )
+        assert a.rho == b.rho and a.p_spin == b.p_spin
+
+    def test_nan_block_passes_through_untouched(self):
+        from src.stats.spatial import prepare_nulls
+
+        nulls = np.array([[1.0, 2.0], [np.nan, 3.0], [2.0, 1.0]])
+        np.testing.assert_array_equal(prepare_nulls(nulls), nulls)
+
+    def test_prepared_is_actually_faster(self, rng):
+        """Guards against the optimisation silently becoming a no-op."""
+        import time
+
+        from src.stats.spatial import prepare_nulls
+
+        n, n_perm = 100, 4000
+        base = rng.normal(size=n)
+        nulls = np.column_stack([rng.permutation(base) for _ in range(n_perm)])
+        pre = prepare_nulls(nulls)
+        y = rng.normal(size=n)
+
+        t = time.perf_counter()
+        for _ in range(5):
+            corr_with_null(base, y, nulls=nulls)
+        slow = time.perf_counter() - t
+        t = time.perf_counter()
+        for _ in range(5):
+            corr_with_null(base, y, nulls=pre, nulls_prepared=True)
+        fast = time.perf_counter() - t
+        assert fast < slow / 2, f"expected >2x, got {slow / max(fast, 1e-9):.1f}x"
