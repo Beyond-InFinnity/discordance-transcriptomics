@@ -21,13 +21,19 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PY=.venv/bin/python
-QUICK=""
 NDRAWS=10000
 NBOOT=10000
 CELLS=12
+P4_CELLS=""          # empty = all 120
 if [[ "${1:-}" == "--quick" ]]; then
-  QUICK=1; NDRAWS=200; NBOOT=200; CELLS=2
-  echo "QUICK MODE — reduced permutations, results are not publishable"
+  NDRAWS=200; NBOOT=200; CELLS=2
+  # Cap the CELL COUNT too, not just the permutation counts. Phase 4 and 6 loop
+  # every cell in the multiverse and that loop, not the null draws, is what
+  # dominates their runtime — a first attempt at this reduced only the draws and
+  # still took over an hour to reach cell 20 of 120, proving nothing about the
+  # steps after it.
+  P4_CELLS="--max-cells 3"
+  echo "QUICK MODE — reduced permutations AND cells; results are not publishable"
 fi
 
 export WORKBENCH_DIR="${WORKBENCH_DIR:-$HOME/opt/workbench/bin_linux64}"
@@ -62,10 +68,10 @@ step "Phase 0c — gene-set map reliability"            $PY scripts/p0c_geneset_
 step "x1 — macaque vascular control"                  $PY scripts/x1_macaque_vascular.py
 
 # --- the analysis proper --------------------------------------------------
-step "Phase 4  — frozen gene sets, both nulls"        $PY scripts/p4_genesets.py --n-draws $NDRAWS
+step "Phase 4  — frozen gene sets, both nulls"        $PY scripts/p4_genesets.py --n-draws $NDRAWS $P4_CELLS
 step "Phase 4b — data-driven arm"                     $PY scripts/p4b_datadriven.py --max-cells $CELLS --n-draws $NDRAWS
 step "Phase 5  — hierarchy control (DECISIVE)"        $PY scripts/p5_hierarchy.py --max-cells $CELLS
-step "Phase 6  — mediation"                           $PY scripts/p6_mediation.py --n-boot $NBOOT
+step "Phase 6  — mediation"                           $PY scripts/p6_mediation.py --n-boot $NBOOT $P4_CELLS
 
 # --- released artifacts ---------------------------------------------------
 step "Annotation table"                               $PY scripts/build_annotation.py --ahba
