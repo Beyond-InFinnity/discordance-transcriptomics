@@ -98,7 +98,7 @@ all — which is a useful thing to have established.
 | **3** expression multiverse | ✅ done | 120/120 cells × 3 parcellations, no gaps |
 | **4** gene sets, both nulls | ⚠️ re-running | 11 frozen sets × 120 pipelines × 3 stability thresholds — see the correction note below |
 | **4b** data-driven arm | ✅ done | 15,562-gene screen over 12 pipelines, max-T family-wise correction, PLS |
-| **5** hierarchy control | ◐ partial | reference-map correlations and partialling done; the gene-set step §9 calls decisive is **not** yet run |
+| **5** hierarchy control | ⚠️ re-running | reference-map partialling done; the gene-set step §9 calls decisive is newly implemented and running now. First result: pericyte/mural against baseline OEF strengthens from −0.385 raw to −0.417 partial (p_spin = 0.015) |
 | **6** mediation | ⚠️ re-running | 15,840 path models, spatial null on every path — inherits the Phase 4 correction |
 | **7** artifacts | ◐ partial | annotation table released; app and preprint outstanding |
 
