@@ -220,14 +220,41 @@ def corr_with_null(
         # Comparing a draw's correlation against an observed value computed on
         # DIFFERENT parcels would bias through the sample-size difference alone,
         # so both sides are always computed on the same subset.
-        null_rhos = np.full(nv.shape[1], np.nan)
-        obs_rhos = np.full(nv.shape[1], np.nan)
-        for i in range(nv.shape[1]):
-            col = nv[:, i]
-            ok = np.isfinite(col)
-            if ok.sum() >= 3:
-                null_rhos[i] = _corr(col[ok], yv[ok], method)
-                obs_rhos[i] = rho if ok.all() else _corr(xv[ok], yv[ok], method)
+        # Vectorised over draws. The obvious per-column loop calls scipy once
+        # per surrogate — 10,000 calls per correlation, doubled by recomputing
+        # the observed value on each draw's parcels. On the cross-species map
+        # that took Phase 4 from two minutes to nearly five hours. Accumulating
+        # the moments as masked matrix products gives the same numbers without
+        # the loop.
+        W = np.isfinite(nv)
+        counts = W.sum(axis=0).astype(float)
+        usable = counts >= 3
+
+        if method == "spearman":
+            # Rank within each draw's own observed subset: a draw missing three
+            # parcels must not be ranked on the same scale as a complete one.
+            R = sps.rankdata(np.where(W, nv, np.inf), axis=0).astype(float)
+            A = np.where(W, R, 0.0)
+            xr = sps.rankdata(np.where(W, xv[:, None], np.inf), axis=0).astype(float)
+            yr = sps.rankdata(np.where(W, yv[:, None], np.inf), axis=0).astype(float)
+            X = np.where(W, xr, 0.0)
+            Y = np.where(W, yr, 0.0)
+        else:
+            A = np.where(W, nv, 0.0)
+            X = np.where(W, xv[:, None], 0.0)
+            Y = np.where(W, yv[:, None], 0.0)
+
+        def _corr_cols(P: np.ndarray, Q: np.ndarray) -> np.ndarray:
+            with np.errstate(invalid="ignore", divide="ignore"):
+                mp, mq = P.sum(axis=0) / counts, Q.sum(axis=0) / counts
+                cov = (P * Q).sum(axis=0) / counts - mp * mq
+                vp = (P * P).sum(axis=0) / counts - mp**2
+                vq = (Q * Q).sum(axis=0) / counts - mq**2
+                out = cov / np.sqrt(vp * vq)
+            return np.where(usable & (vp > 0) & (vq > 0), out, np.nan)
+
+        null_rhos = _corr_cols(A, Y)
+        obs_rhos = _corr_cols(X, Y)
 
     finite = np.isfinite(null_rhos)
     n_perm_used = int(finite.sum())
