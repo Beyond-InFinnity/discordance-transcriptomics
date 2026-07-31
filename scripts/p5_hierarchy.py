@@ -53,6 +53,10 @@ from src.stats.spatial import corr_with_null, fdr_bh, make_nulls
 from src.utils.config import load_config
 from src.utils.manifest import manifest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from p4_genesets import load_genesets
+from p4b_datadriven import select_cells
+
 logger = logging.getLogger("p5_hierarchy")
 
 TARGETS = ["coupling_n", "baseline_oef"]
@@ -64,6 +68,12 @@ def main() -> int:
     ap.add_argument("--config", default="config/base.yaml")
     ap.add_argument("--parcellation", default=None)
     ap.add_argument("--targets", nargs="*", default=TARGETS)
+    ap.add_argument(
+        "--max-cells",
+        type=int,
+        default=12,
+        help="multiverse cells for the gene-set step (0 to skip it)",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -77,6 +87,32 @@ def main() -> int:
     # Dropout proxy is a mandatory covariate everywhere downstream (Phase 0b).
     dropout, _ = load_dropout_proxy(cfg, "snr_coverage", parc)
     cov_names = [*HIERARCHY_COVARIATES, "dropout_snr_coverage"]
+
+    # Frozen gene sets and the multiverse cells the decisive step runs over.
+    gsets = load_genesets() if args.max_cells else {}
+    expression_cells: list[tuple[str, pd.DataFrame]] = []
+    if gsets:
+        mv_dir = cfg.path("expression") / (
+            "multiverse"
+            if parc == cfg.parcellation.primary.name
+            else f"multiverse_{parc}"
+        )
+        idx_path = mv_dir / "multiverse_index.csv"
+        if idx_path.exists():
+            idx = pd.read_csv(idx_path)
+            idx = idx[idx.status.isin(["ok", "cached"])]
+            n_parcels = len(dropout)
+            for _, cell in select_cells(idx, args.max_cells).iterrows():
+                dest = mv_dir / f"expr_{cell['hash']}.parquet"
+                if dest.exists():
+                    expression_cells.append(
+                        (cell["hash"], pd.read_parquet(dest).iloc[:n_parcels])
+                    )
+            logger.info(
+                "gene-set step: %d sets x %d cells", len(gsets), len(expression_cells)
+            )
+        else:
+            logger.warning("%s missing — skipping the gene-set step", idx_path)
 
     rows: list[dict] = []
     n_spec = _PARC_SPEC.get(parc, (200, 7))
@@ -143,6 +179,47 @@ def main() -> int:
                     "attenuation": pr.attenuation,
                 }
             )
+
+        # --- step 3: the decisive question -------------------------------
+        # Do the frozen gene sets explain variance in the target *beyond* the
+        # hierarchy? §9 names this the point of the phase, and it is the step
+        # that distinguishes a molecular finding from a hierarchy finding.
+        #
+        # Run across the multiverse rather than one pipeline (R6): a partial
+        # correlation that only survives in some processing variants is not a
+        # finding, and the share that survive is the number to report.
+        for cell_hash, exp in expression_cells:
+            for gname, gspec in gsets.items():
+                present = [g for g in gspec["genes"] if g in exp.columns]
+                if len(present) < 3:
+                    continue
+                z = (exp[present] - exp[present].mean()) / exp[present].std()
+                score = z.mean(axis=1).to_numpy()
+                pr = partial_corr_with_null(
+                    target,
+                    score,
+                    covars,
+                    nulls,
+                    covariate_names=cov_names,
+                    name=f"{target_name}~{gname}",
+                    method=cfg.stats.correlation,
+                )
+                rows.append(
+                    {
+                        "target": target_name,
+                        "reference": gname,
+                        "step": "geneset_partial",
+                        "cell": cell_hash,
+                        "n_genes": len(present),
+                        "direction_h1": gspec.get("direction"),
+                        "rho": pr.rho_partial,
+                        "p_spin": pr.p_spin_partial,
+                        "p_naive": np.nan,
+                        "n_valid": pr.n_valid,
+                        "rho_before": pr.rho_raw,
+                        "attenuation": pr.attenuation,
+                    }
+                )
 
     # --- positive controls -------------------------------------------------
     # A hierarchy result that is null across the board is only interpretable if

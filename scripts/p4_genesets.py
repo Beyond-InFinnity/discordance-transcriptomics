@@ -49,6 +49,7 @@ from src.data.targets import (
     load_coupling_components,
     load_target_map,
 )
+from src.expression.multiverse import cell_path
 from src.stats.competitive import competitive_null, differential_stability
 from src.stats.spatial import apply_spin, corr_with_null, fdr_bh, spin_indices
 from src.utils.config import REPO_ROOT, load_config
@@ -194,7 +195,7 @@ def main() -> int:
 
     rows = []
     for n_cell, (_, cell) in enumerate(idx.iterrows(), 1):
-        exp_all = pd.read_parquet(cell["path"])
+        exp_all = pd.read_parquet(cell_path(mv_dir, cell))
         exp = exp_all.iloc[:100]  # left hemisphere
         for thr in (0.0, 0.1, 0.2):
             keep = stability[stability >= thr].index if thr > 0 else exp.columns

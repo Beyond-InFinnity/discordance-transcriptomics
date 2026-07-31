@@ -55,6 +55,7 @@ from src.data.targets import (
     load_dropout_proxy,
     load_target_map,
 )
+from src.expression.multiverse import cell_path
 from src.stats.hierarchy import fetch_reference_parcels
 from src.stats.mediation import mediation
 from src.stats.spatial import apply_spin, fdr_bh, spin_indices
@@ -79,23 +80,6 @@ OUTCOMES = ["discordance_extraction", "discordance_overshoot", "coupling_angle"]
 HIERARCHY_REFS = ["margulies_gradient1", "t1w_t2w_myelin"]
 
 _PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
-
-
-def cell_path(mv_dir: Path, cell) -> Path:
-    """Locate a multiverse cell's parquet from its hash.
-
-    The index's ``path`` column holds whatever absolute path the machine that
-    ran Phase 3 used, so it does not survive being copied between machines —
-    this grid was computed on a remote box and analysed here. The hash is the
-    canonical key, and the filename is a pure function of it.
-    """
-    dest = mv_dir / f"expr_{cell['hash']}.parquet"
-    if dest.exists():
-        return dest
-    stored = Path(str(cell.get("path", "")))
-    if stored.exists():
-        return stored
-    raise FileNotFoundError(f"no parquet for cell {cell['hash']} under {mv_dir}")
 
 
 def build_maps(cfg, parc: str) -> tuple[dict, dict, np.ndarray]:

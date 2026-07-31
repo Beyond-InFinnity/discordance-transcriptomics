@@ -1,11 +1,11 @@
 {
   "name": "p5_hierarchy_schaefer200x7",
-  "created_utc": "2026-07-27T06:45:07Z",
-  "git_sha": "292e3cbc7bb66b6fd93d5968faa77559f19f6c1a",
+  "created_utc": "2026-07-31T12:47:48Z",
+  "git_sha": "2fb691ead3fdf2ae87a16c548cec08c6119449b8",
   "git_dirty": true,
   "config_hash": "34917b24a35f",
   "seed": 42,
-  "wall_clock_sec": 0.006,
+  "wall_clock_sec": 0.025,
   "python": "3.11.15",
   "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.35",
   "packages": {
@@ -25,14 +25,13 @@
   "inputs": {},
   "results": {
     "parcellation": "schaefer200x7",
-    "n_tests": 28,
+    "n_tests": 25,
     "covariates": [
       "margulies_gradient1",
       "t1w_t2w_myelin",
       "dropout_snr_coverage"
     ],
     "gradient_rho": {
-      "coupling_n": 0.04272427242724272,
       "baseline_oef": 0.15227122712271224
     },
     "n_survive_partial": 0,

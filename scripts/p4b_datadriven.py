@@ -49,6 +49,7 @@ from src.expression.datadriven import (
     screen_summary,
     tail_enrichment,
 )
+from src.expression.multiverse import cell_path
 from src.stats.spatial import apply_spin, spin_indices
 from src.utils.config import load_config
 from src.utils.manifest import manifest
@@ -71,17 +72,6 @@ PRIMARY = {
     "tolerance": "2",
     "norm_matched": "True",
 }
-
-
-def cell_path(mv_dir: Path, cell) -> Path:
-    """Locate a cell's parquet by hash; the stored path may be another machine's."""
-    dest = mv_dir / f"expr_{cell['hash']}.parquet"
-    if dest.exists():
-        return dest
-    stored = Path(str(cell.get("path", "")))
-    if stored.exists():
-        return stored
-    raise FileNotFoundError(f"no parquet for cell {cell['hash']}")
 
 
 def select_cells(idx: pd.DataFrame, n_cells: int | None) -> pd.DataFrame:
