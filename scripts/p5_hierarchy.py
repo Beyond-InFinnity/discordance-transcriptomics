@@ -41,7 +41,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.data.parcellate import schaefer_gifti_for_nulls
+from src.data.parcellate import gifti_for_nulls
 from src.data.targets import load_dropout_proxy, load_target_map
 from src.stats.hierarchy import (
     HIERARCHY_COVARIATES,
@@ -60,7 +60,6 @@ from p4b_datadriven import select_cells
 logger = logging.getLogger("p5_hierarchy")
 
 TARGETS = ["coupling_n", "baseline_oef"]
-_PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
 
 
 def main() -> int:
@@ -115,7 +114,6 @@ def main() -> int:
             logger.warning("%s missing — skipping the gene-set step", idx_path)
 
     rows: list[dict] = []
-    n_spec = _PARC_SPEC.get(parc, (200, 7))
 
     for target_name in args.targets:
         target, _tmeta = load_target_map(cfg, target_name, parc, masked=True)
@@ -123,7 +121,7 @@ def main() -> int:
             target,
             atlas=cfg.parcellation.primary.space,
             density=density,
-            parcellation=schaefer_gifti_for_nulls(n_spec[0], n_spec[1], density, "L"),
+            parcellation=gifti_for_nulls(parc, density, "L"),
             n_perm=cfg.nulls.n_perm,
             seed=cfg.seed,
             method=cfg.nulls.surface_method,

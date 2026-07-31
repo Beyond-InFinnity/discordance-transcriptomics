@@ -42,14 +42,14 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.data.parcellate import schaefer_gifti_for_nulls
+from src.data.parcellate import gifti_for_nulls
 from src.expression.datadriven import (
     gene_screen,
     pls_with_spin,
     screen_summary,
     tail_enrichment,
 )
-from src.expression.multiverse import cell_path
+from src.expression.multiverse import cell_path, multiverse_dir
 from src.stats.spatial import apply_spin, spin_indices
 from src.utils.config import load_config
 from src.utils.manifest import manifest
@@ -59,7 +59,6 @@ from p4_genesets import load_genesets, targets_for
 
 logger = logging.getLogger("p4b_datadriven")
 
-_PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
 
 # The primary pipeline (§7.5). Reported as the headline; the rest form the
 # multiverse distribution.
@@ -101,14 +100,19 @@ def main() -> int:
         default=0.1,
         help="keep genes at or above this differential stability (§7.5)",
     )
+    ap.add_argument(
+        "--parcellation",
+        default=None,
+        help="override the primary parcellation (§7.1/§11 sensitivity analyses)",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     logging.basicConfig(level=cfg.logging.level, format=cfg.logging.format)
-    parc = cfg.parcellation.primary.name
+    parc = args.parcellation or cfg.parcellation.primary.name
     density = cfg.parcellation.primary.density
 
-    mv_dir = cfg.path("expression") / "multiverse"
+    mv_dir = multiverse_dir(cfg, parc)
     idx = pd.read_csv(mv_dir / "multiverse_index.csv")
     idx = idx[idx.status.isin(["ok", "cached"])]
     cells = select_cells(idx, args.max_cells)
@@ -127,12 +131,11 @@ def main() -> int:
     gsets = {k: v["genes"] for k, v in load_genesets().items()}
     n_parcels = len(next(iter(targets.values())))
 
-    n_spec = _PARC_SPEC.get(parc, (200, 7))
     sidx = spin_indices(
         n_parcels,
         atlas=cfg.parcellation.primary.space,
         density=density,
-        parcellation=schaefer_gifti_for_nulls(n_spec[0], n_spec[1], density, "L"),
+        parcellation=gifti_for_nulls(parc, density, "L"),
         n_perm=cfg.nulls.n_perm,
         seed=cfg.seed,
         method=cfg.nulls.surface_method,
@@ -141,6 +144,10 @@ def main() -> int:
     nulls = {k: apply_spin(v, sidx) for k, v in targets.items()}
 
     out = Path("results")
+    # Suffix non-primary parcellations so a sensitivity run never overwrites the
+    # headline result. §11 requires reporting whether each effect holds at DK-68
+    # and Schaefer-400, and that is impossible if they share filenames.
+    tag = "" if parc == cfg.parcellation.primary.name else f"_{parc}"
     out.mkdir(exist_ok=True)
     summaries: list[dict] = []
     enrich_rows: list[pd.DataFrame] = []
@@ -202,13 +209,13 @@ def main() -> int:
     enrich = pd.concat(enrich_rows, ignore_index=True) if enrich_rows else pd.DataFrame()
     pls = pd.concat(pls_rows, ignore_index=True) if pls_rows else pd.DataFrame()
 
-    with manifest("p4b_datadriven", cfg) as man:
-        summ.to_csv(out / "p4b_screen_summary.csv", index=False)
+    with manifest(f"p4b_datadriven{tag}", cfg) as man:
+        summ.to_csv(out / f"p4b_screen_summary{tag}.csv", index=False)
         if len(enrich):
-            enrich.to_csv(out / "p4b_tail_enrichment.csv", index=False)
+            enrich.to_csv(out / f"p4b_tail_enrichment{tag}.csv", index=False)
         if len(pls):
-            pls.to_csv(out / "p4b_pls.csv", index=False)
-        (out / "p4b_top_genes.json").write_text(json.dumps(top_genes, indent=2))
+            pls.to_csv(out / f"p4b_pls{tag}.csv", index=False)
+        (out / f"p4b_top_genes{tag}.json").write_text(json.dumps(top_genes, indent=2))
 
         sig = summ[summ.p < cfg.stats.alpha]
         man.record(

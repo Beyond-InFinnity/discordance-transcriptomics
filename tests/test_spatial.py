@@ -296,3 +296,60 @@ class TestSpinIndicesAgainstRealGeometry:
         np.testing.assert_array_equal(a, b)
         with pytest.raises(ValueError, match="parcels"):
             spin_indices(50, cache_path=p, **kw)
+
+
+class TestNullGeometryResolution:
+    """Null geometry must come from the named atlas, never from a default.
+
+    Four scripts shared this::
+
+        _PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
+        n_spec = _PARC_SPEC.get(parc, (200, 7))
+
+    There is no dk68 entry, so `--parcellation dk68` silently rotated 100
+    Schaefer parcels to build a null for a 34-parcel Desikan-Killiany map and
+    reported a p-value without complaint. p5_hierarchy documented that flag in
+    its usage string.
+    """
+
+    @staticmethod
+    @pytest.fixture(scope="class")
+    def geom():
+        pytest.importorskip("neuromaps")
+        from src.utils.workbench import ensure_workbench
+
+        try:
+            ensure_workbench()
+        except Exception as exc:
+            pytest.skip(f"workbench unavailable: {exc}")
+
+    @pytest.mark.parametrize(
+        "name,expected",
+        [("schaefer200x7", 100), ("schaefer400x7", 200), ("dk68", 34)],
+    )
+    def test_each_atlas_gets_its_own_geometry(self, geom, name, expected):
+        import numpy as np
+
+        from src.data.parcellate import gifti_for_nulls
+
+        (gii,) = gifti_for_nulls(name, "10k", "L")
+        n = int(np.asarray(gii.agg_data()).max())
+        assert n == expected, f"{name} resolved to {n} parcels, expected {expected}"
+
+    def test_unknown_atlas_raises_rather_than_defaulting(self, geom):
+        from src.data.parcellate import gifti_for_nulls
+
+        with pytest.raises(ValueError, match="unknown parcellation"):
+            gifti_for_nulls("not_an_atlas", "10k", "L")
+
+    def test_dk68_does_not_silently_become_schaefer(self, geom):
+        """The specific wrong answer the old default produced."""
+        import numpy as np
+
+        from src.data.parcellate import gifti_for_nulls
+
+        (dk,) = gifti_for_nulls("dk68", "10k", "L")
+        (sch,) = gifti_for_nulls("schaefer200x7", "10k", "L")
+        assert int(np.asarray(dk.agg_data()).max()) != int(
+            np.asarray(sch.agg_data()).max()
+        )

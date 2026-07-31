@@ -48,14 +48,14 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.data.parcellate import schaefer_gifti_for_nulls
+from src.data.parcellate import gifti_for_nulls
 from src.data.targets import (
     discordance_modes,
     load_coupling_components,
     load_dropout_proxy,
     load_target_map,
 )
-from src.expression.multiverse import cell_path
+from src.expression.multiverse import cell_path, multiverse_dir
 from src.stats.hierarchy import fetch_reference_parcels
 from src.stats.mediation import mediation
 from src.stats.spatial import apply_spin, fdr_bh, spin_indices
@@ -78,8 +78,6 @@ OUTCOMES = ["discordance_extraction", "discordance_overshoot", "coupling_angle"]
 
 # Phase 5 controls plus the mandatory Phase 0b dropout proxy.
 HIERARCHY_REFS = ["margulies_gradient1", "t1w_t2w_myelin"]
-
-_PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
 
 
 def build_maps(cfg, parc: str) -> tuple[dict, dict, np.ndarray]:
@@ -119,14 +117,19 @@ def main() -> int:
     ap.add_argument("--config", default="config/base.yaml")
     ap.add_argument("--n-boot", type=int, default=10_000)
     ap.add_argument("--max-cells", type=int, default=None)
+    ap.add_argument(
+        "--parcellation",
+        default=None,
+        help="override the primary parcellation (§7.1/§11 sensitivity analyses)",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     logging.basicConfig(level=cfg.logging.level, format=cfg.logging.format)
-    parc = cfg.parcellation.primary.name
+    parc = args.parcellation or cfg.parcellation.primary.name
     density = cfg.parcellation.primary.density
 
-    mv_dir = cfg.path("expression") / "multiverse"
+    mv_dir = multiverse_dir(cfg, parc)
     idx_path = mv_dir / "multiverse_index.csv"
     if not idx_path.exists():
         raise FileNotFoundError(f"{idx_path} missing — run scripts/p3_multiverse.py")
@@ -144,12 +147,11 @@ def main() -> int:
     # One geometry, reused for every exposure and outcome map. Generating
     # surrogates per map would repeat identical spherical rotations thousands of
     # times; see src/stats/spatial.py::spin_indices.
-    n_spec = _PARC_SPEC.get(parc, (200, 7))
     sidx = spin_indices(
         n_parcels,
         atlas=cfg.parcellation.primary.space,
         density=density,
-        parcellation=schaefer_gifti_for_nulls(n_spec[0], n_spec[1], density, "L"),
+        parcellation=gifti_for_nulls(parc, density, "L"),
         n_perm=cfg.nulls.n_perm,
         seed=cfg.seed,
         method=cfg.nulls.surface_method,
@@ -242,9 +244,13 @@ def main() -> int:
     summ["supported"] = (summ.pct_indirect_sig >= 0.80) & summ.stable_sign
 
     out = Path("results")
-    with manifest("p6_mediation", cfg) as man:
-        df.to_csv(out / "p6_mediation_full.csv", index=False)
-        summ.to_csv(out / "p6_mediation_summary.csv", index=False)
+    # Suffix non-primary parcellations so a sensitivity run never overwrites the
+    # headline result. §11 requires reporting whether each effect holds at DK-68
+    # and Schaefer-400, and that is impossible if they share filenames.
+    tag = "" if parc == cfg.parcellation.primary.name else f"_{parc}"
+    with manifest(f"p6_mediation{tag}", cfg) as man:
+        df.to_csv(out / f"p6_mediation_full{tag}.csv", index=False)
+        summ.to_csv(out / f"p6_mediation_summary{tag}.csv", index=False)
         adj = summ[summ.adjusted]
         man.record(
             n_cells=len(idx),
@@ -260,8 +266,8 @@ def main() -> int:
                 adj.limiting_path.value_counts().to_dict() if len(adj) else {}
             ),
             outputs=[
-                str(out / "p6_mediation_full.csv"),
-                str(out / "p6_mediation_summary.csv"),
+                str(out / f"p6_mediation_full{tag}.csv"),
+                str(out / f"p6_mediation_summary{tag}.csv"),
             ],
         )
         man.note(

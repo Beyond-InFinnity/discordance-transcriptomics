@@ -172,6 +172,36 @@ def get_parcellation(
     return labels.astype(int), annot_to_gifti_label(annot), int(labels.max())
 
 
+def gifti_for_nulls(
+    name: str, density: str = "10k", hemi: str = "L"
+) -> tuple[nib.gifti.GiftiImage]:
+    """Parcellation packaged for ``neuromaps.nulls``, for ANY supported atlas.
+
+    Replaces a pattern that appeared in four scripts::
+
+        _PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
+        n_spec = _PARC_SPEC.get(parc, (200, 7))
+        ... schaefer_gifti_for_nulls(n_spec[0], n_spec[1], density, "L")
+
+    That dictionary has no ``dk68`` entry, so the ``.get`` default silently
+    handed Schaefer-200 geometry to any other atlas. Every script offering
+    ``--parcellation dk68`` would have rotated 100 Schaefer parcels to build a
+    null for a 34-parcel Desikan-Killiany map, and reported a p-value without
+    complaint. Nothing crashes; the number is simply wrong.
+
+    Resolving through :func:`get_parcellation` means each atlas supplies its own
+    geometry, and an unrecognised name raises there rather than defaulting.
+
+    Returns
+    -------
+    tuple of GiftiImage
+        A 1-tuple, the shape ``get_parcel_centroids`` expects for the
+        left-hemisphere-only analyses R3 mandates.
+    """
+    _, gii, _ = get_parcellation(name, density, hemi)
+    return (gii,)
+
+
 def annot_to_gifti_label(annot: str | Path) -> nib.gifti.GiftiImage:
     """Convert a FreeSurfer ``.annot`` to a GIFTI label image.
 

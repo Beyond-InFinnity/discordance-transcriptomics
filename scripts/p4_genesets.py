@@ -43,13 +43,13 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.data.parcellate import schaefer_gifti_for_nulls
+from src.data.parcellate import gifti_for_nulls
 from src.data.targets import (
     discordance_modes,
     load_coupling_components,
     load_target_map,
 )
-from src.expression.multiverse import cell_path
+from src.expression.multiverse import cell_path, multiverse_dir
 from src.stats.competitive import competitive_null, differential_stability
 from src.stats.spatial import apply_spin, corr_with_null, fdr_bh, spin_indices
 from src.utils.config import REPO_ROOT, load_config
@@ -59,7 +59,6 @@ logger = logging.getLogger("p4_genesets")
 
 MSIGDB = REPO_ROOT / "data/raw/genesets/msigdb_sets.json"
 
-_PARC_SPEC = {"schaefer200x7": (200, 7), "schaefer400x7": (400, 7)}
 MACAQUE = REPO_ROOT / "data/derived/macaque/macaque_vascular_parcels.npy"
 
 
@@ -125,13 +124,19 @@ def main() -> int:
     ap.add_argument("--config", default="config/base.yaml")
     ap.add_argument("--n-draws", type=int, default=10_000)
     ap.add_argument("--max-cells", type=int, default=None)
+    ap.add_argument(
+        "--parcellation",
+        default=None,
+        help="override the primary parcellation (§7.1/§11 sensitivity analyses)",
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     logging.basicConfig(level=cfg.logging.level, format=cfg.logging.format)
-    parc = cfg.parcellation.primary.name
+    parc = args.parcellation or cfg.parcellation.primary.name
+    density = cfg.parcellation.primary.density
 
-    mv_dir = cfg.path("expression") / "multiverse"
+    mv_dir = multiverse_dir(cfg, parc)
     idx_path = mv_dir / "multiverse_index.csv"
     if not idx_path.exists():
         raise FileNotFoundError(
@@ -156,14 +161,11 @@ def main() -> int:
     # question than the one being asked. Rotating each target and comparing the
     # gene score against those rotations is the correct pairing, and it is what
     # every other phase already does.
-    n_spec = _PARC_SPEC.get(parc, (200, 7))
     sidx = spin_indices(
         len(next(iter(targets.values()))),
         atlas=cfg.parcellation.primary.space,
-        density=cfg.parcellation.primary.density,
-        parcellation=schaefer_gifti_for_nulls(
-            n_spec[0], n_spec[1], cfg.parcellation.primary.density, "L"
-        ),
+        density=density,
+        parcellation=gifti_for_nulls(parc, density, "L"),
         n_perm=cfg.nulls.n_perm,
         seed=cfg.seed,
         method=cfg.nulls.surface_method,
@@ -291,11 +293,15 @@ def main() -> int:
         ).drop(columns=["name"])
 
     out = Path("results")
-    with manifest("p4_genesets", cfg) as man:
-        df.to_csv(out / "p4_genesets_full.csv", index=False)
-        summ.to_csv(out / "p4_genesets_summary.csv", index=False)
+    # Suffix non-primary parcellations so a sensitivity run never overwrites the
+    # headline result. §11 requires reporting whether each effect holds at DK-68
+    # and Schaefer-400, and that is impossible if they share filenames.
+    tag = "" if parc == cfg.parcellation.primary.name else f"_{parc}"
+    with manifest(f"p4_genesets{tag}", cfg) as man:
+        df.to_csv(out / f"p4_genesets_full{tag}.csv", index=False)
+        summ.to_csv(out / f"p4_genesets_summary{tag}.csv", index=False)
         if len(comp):
-            comp.to_csv(out / "p4_competitive_nulls.csv", index=False)
+            comp.to_csv(out / f"p4_competitive_nulls{tag}.csv", index=False)
         man.record(
             n_cells=len(idx),
             n_gene_sets=len(gsets),
