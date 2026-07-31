@@ -41,7 +41,22 @@ for h in "${HOSTS[@]}"; do
     && ok "$h has Workbench" || bad "$h Workbench missing"
 done
 
-hdr "3. CODE SYNC MUST NOT CARRY results/"
+hdr "3. NO SILENTLY SKIPPED TESTS"
+# A skipped test verifies nothing, and skips differ by machine — the compute
+# node with both GPUs was skipping every GPU test because torch was installed
+# only on the laptop. Report them rather than let a green run hide them.
+for h in "${HOSTS[@]}"; do
+  sk=$(ssh "$h" "cd ~/discordance-transcriptomics && WORKBENCH_DIR=\$HOME/opt/workbench/bin_linux64 .venv/bin/python -m pytest -q 2>&1 | grep -oE '[0-9]+ skipped' | grep -oE '^[0-9]+'" 2>/dev/null)
+  sk=${sk:-0}
+  if [ "$sk" = "0" ]; then ok "$h skips no tests"
+  else
+    echo "  NOTE  $h skips $sk test(s):"
+    ssh "$h" "cd ~/discordance-transcriptomics && WORKBENCH_DIR=\$HOME/opt/workbench/bin_linux64 .venv/bin/python -m pytest -q -rs 2>&1 | grep '^SKIPPED' | sed 's|.*: |          |' | sort -u" 2>/dev/null
+    PASS=$((PASS+1))
+  fi
+done
+
+hdr "4. CODE SYNC MUST NOT CARRY results/"
 if grep -q -- "--exclude='/results'" scripts/sync_code.sh 2>/dev/null; then
   out=$(rsync -an --itemize-changes \
         --exclude='/.venv' --exclude='/data' --exclude='/.git' \
@@ -53,7 +68,7 @@ else
   bad "sync_code.sh does not exclude /results"
 fi
 
-hdr "4. DIRTY TREE MUST BLOCK A RUN"
+hdr "5. DIRTY TREE MUST BLOCK A RUN"
 tmpf="_verify_dirty_$$.tmp"; touch "$tmpf"
 if bash -c 'cd "$(dirname "$0")/.." 2>/dev/null; true'; then :; fi
 out=$(cd . && git status --porcelain | wc -l)
@@ -68,7 +83,7 @@ if [ "$out" -gt 0 ]; then
 fi
 rm -f "$tmpf"
 
-hdr "5. AUDIT MUST REJECT FOREIGN RESULTS"
+hdr "6. AUDIT MUST REJECT FOREIGN RESULTS"
 TD=$(mktemp -d)
 cp results/*.manifest.json "$TD/" 2>/dev/null || true
 if [ "$(ls "$TD"/*.manifest.json 2>/dev/null | wc -l)" -gt 0 ]; then
@@ -79,7 +94,7 @@ else
   echo "  SKIP  no manifests available to test with"
 fi
 
-hdr "6. AUDIT MUST ACCEPT A GENUINELY CLEAN DIRECTORY"
+hdr "7. AUDIT MUST ACCEPT A GENUINELY CLEAN DIRECTORY"
 TD2=$(mktemp -d)
 printf '%s\n' "$(git rev-parse --short HEAD)-verify" > "$TD2/.run_id"
 date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ > "$TD2/.run_started" 2>/dev/null \
@@ -99,7 +114,7 @@ PY
              || { bad "audit REJECTED a clean directory (false alarm)"; \
                   .venv/bin/python scripts/audit_provenance.py --results "$TD2" 2>&1 | grep -A2 FAIL | head -12; }
 
-hdr "7. AUDIT MUST DETECT MIXED CODE STATES"
+hdr "8. AUDIT MUST DETECT MIXED CODE STATES"
 cp "$TD2"/alpha.manifest.json "$TD2"/gamma.manifest.json
 .venv/bin/python - "$TD2" <<'PY'
 import json, pathlib, sys

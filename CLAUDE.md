@@ -129,7 +129,7 @@ not detected for hours, and then only by an audit.
 | machine | role | rule |
 |---|---|---|
 | **laptop** | **MASTER** | Only machine that commits, pushes, and holds canonical `results/`. |
-| `workstation` (ssh) | compute | i9, 62 GB, 2 GPUs. Git **clone**. |
+| `workstation` (ssh) | compute | i9, 62 GB. Git **clone**. Two cards but only **one usable**: the RTX 3070 (8 GB). The RTX 5050 is Blackwell (sm_120) and the pinned PyTorch 2.5.1+cu121 supports only up to sm_90, so it is visible to `torch` and unusable. Effective GPU capacity is 8 GB, not 16. |
 | `claude-machine` (ssh) | compute | i5, 31 GB. Git **clone**. |
 
 **Code moves by `git pull`, never by rsync.** A compute node that is an rsync
