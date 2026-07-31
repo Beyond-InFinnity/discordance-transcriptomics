@@ -51,3 +51,6 @@ results/**
 #
 # The public deliverable is data/derived/annotation/, released separately.
 results/
+
+# Run logs are local scratch, never artifacts.
+*.log
