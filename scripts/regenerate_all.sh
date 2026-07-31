@@ -48,6 +48,21 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
 fi
 echo "code state: $(git rev-parse --short HEAD) (clean)"
 
+# Own results/ outright, and stamp the run.
+#
+# Being gitignored stops git from carrying results between machines; it does
+# nothing about rsync, which ignores gitignore entirely. A stray `rsync ./ host:`
+# would still deposit the laptop's copies here, and that is precisely how a
+# completed regeneration was silently reverted. So rather than trusting the
+# operator to use sync_code.sh, this wipes results/ and writes a token naming
+# the run. audit_provenance.py then verifies every artifact was written after
+# that token, which makes foreign files detectable rather than invisible.
+RUN_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%dT%H%M%SZ)"
+rm -rf results && mkdir -p results
+printf '%s\n' "$RUN_ID" > results/.run_id
+date -u +%Y-%m-%dT%H:%M:%SZ > results/.run_started
+echo "run id: $RUN_ID (results/ wiped; any pre-existing files discarded)"
+
 step () {
   echo ""
   echo "=============================================================="

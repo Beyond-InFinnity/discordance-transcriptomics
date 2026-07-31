@@ -94,6 +94,34 @@ def check_pairing(results: Path, mans: list[dict]) -> tuple[bool, list[str]]:
     return not orphan_csv, msgs
 
 
+def check_run_token(results: Path, mans: list[dict]) -> tuple[bool, list[str]]:
+    """Was every artifact written by the run that owns this directory?
+
+    regenerate_all.sh wipes results/ and drops a token before computing. Any
+    artifact predating that token was not produced by this run — it arrived some
+    other way, almost certainly an rsync that ignored gitignore. That is how a
+    finished regeneration was silently reverted and went unnoticed for hours.
+    """
+    tok, started = results / ".run_id", results / ".run_started"
+    if not tok.exists():
+        return False, [
+            "  no results/.run_id — this directory was not produced by "
+            "regenerate_all.sh, so nothing here has a known origin"
+        ]
+    t0 = datetime.fromisoformat(started.read_text().strip().replace("Z", "+00:00"))
+    stale = []
+    for m in mans:
+        ts = m.get("created_utc")
+        if not ts:
+            continue
+        with contextlib.suppress(ValueError):
+            if datetime.fromisoformat(ts.replace("Z", "+00:00")) < t0:
+                stale.append(f"{m['_name']} ({ts[:16]})")
+    msgs = [f"  run id: {tok.read_text().strip()}", f"  started: {t0:%Y-%m-%d %H:%M}"]
+    msgs += [f"  PREDATES THIS RUN: {s}" for s in sorted(stale)[:10]]
+    return not stale, msgs
+
+
 def check_recency(mans: list[dict]) -> tuple[bool, list[str]]:
     ts = []
     for m in mans:
@@ -170,6 +198,7 @@ def main() -> int:
         ("3. EVERY OUTPUT HAS PROVENANCE", *check_pairing(results, mans)),
         ("4. WRITTEN TOGETHER", *check_recency(mans)),
         ("5. OVERLAPPING VALUES AGREE", *check_agreement(results, args.parcellation)),
+        ("6. PRODUCED BY THIS RUN", *check_run_token(results, mans)),
     ]
     n_fail = 0
     for title, ok, msgs in checks:
@@ -181,7 +210,7 @@ def main() -> int:
 
     print(f"\n{'=' * 70}")
     if n_fail:
-        print(f"VERDICT: NOT A CLEAN RUN — {n_fail} of 5 checks failed.")
+        print(f"VERDICT: NOT A CLEAN RUN — {n_fail} of 6 checks failed.")
         print("Results in this directory come from more than one code state and")
         print("should not be reported until regenerated in a single pass.")
     else:
