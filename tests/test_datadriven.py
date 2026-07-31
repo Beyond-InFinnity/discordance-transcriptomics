@@ -546,3 +546,36 @@ class TestFrozenGeneSetIdentity:
                 p4.load_genesets()
         finally:
             tmp.unlink(missing_ok=True)
+
+
+class TestNoScriptTrustsAStoredPath:
+    """The multiverse index stores whatever absolute path the machine that ran
+    Phase 3 used, so any script reading it directly breaks when the grid is
+    computed on one host and analysed on another — which is routine here.
+
+    This bug was fixed three separate times in one file: two occurrences of
+    ``cell["path"]`` and one of ``primary.iloc[0]["path"]``, which a grep for
+    the first form did not match. The third killed a regeneration run 3.5 hours
+    in. A grep is the wrong tool; this is the right one.
+    """
+
+    def test_no_script_reads_a_parquet_from_a_stored_path(self):
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for f in sorted((root / "scripts").glob("*.py")) + sorted(
+            (root / "src").rglob("*.py")
+        ):
+            for i, line in enumerate(f.read_text().splitlines(), 1):
+                if "read_parquet" not in line:
+                    continue
+                # Legitimate: resolved by hash, or a path this code just built.
+                if "cell_path(" in line or re.search(r"\b(dest|path|dst)\b", line):
+                    continue
+                if '["path"]' in line or ".path" in line:
+                    offenders.append(f"{f.relative_to(root)}:{i}: {line.strip()}")
+        assert not offenders, "read_parquet from a stored index path:\n" + "\n".join(
+            offenders
+        )

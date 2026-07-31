@@ -278,7 +278,7 @@ def main() -> int:
     ]
     comp_rows = []
     if len(primary):
-        exp = pd.read_parquet(primary.iloc[0]["path"]).iloc[:100]
+        exp = pd.read_parquet(cell_path(mv_dir, primary.iloc[0])).iloc[:100]
         for gname, gspec in gsets.items():
             for tname, y in targets.items():
                 try:
