@@ -118,6 +118,40 @@ source ~/.bashrc
 wb_command -version   # must succeed before proceeding
 ```
 
+### 4.1a Machine hierarchy — READ BEFORE RUNNING ANYTHING REMOTE
+
+Undefined roles caused the worst failure in this project's history: a completed
+regeneration was silently reverted by a routine code sync, `results/` came to
+hold four different dates while reading as a clean run, and repeated fixes
+appeared not to take because stale artifacts kept overwriting fresh ones. It was
+not detected for hours, and then only by an audit.
+
+| machine | role | rule |
+|---|---|---|
+| **laptop** | **MASTER** | Only machine that commits, pushes, and holds canonical `results/`. |
+| `workstation` (ssh) | compute | i9, 62 GB, 2 GPUs. Git **clone**. |
+| `claude-machine` (ssh) | compute | i5, 31 GB. Git **clone**. |
+
+**Code moves by `git pull`, never by rsync.** A compute node that is an rsync
+target has no version identity — the workstation had no `.git` at all, so
+nothing could establish which code produced its output. Both are now clones and
+`git rev-parse HEAD` is the answer.
+
+**Results move one direction only: compute → laptop.** Use
+`scripts/pull_results.sh <host>`. Never rsync the repo root to a compute node:
+`results/` is git-tracked, so a plain `rsync ./ host:` carries the laptop's
+committed copies and destroys whatever that host just computed. Use
+`scripts/sync_code.sh <host>`, which excludes it.
+
+**Nothing in `results/` is trustworthy until `scripts/audit_provenance.py`
+passes.** It is a gate (exit 1 on failure) and checks five things: one git SHA
+across all artifacts, a clean tree at write time, every output paired with a
+manifest, artifacts written hours rather than days apart, and agreement between
+values appearing in more than one file. A run that fails it is not a run.
+
+**Never compute on a dirty tree.** Ten artifacts were written from one, and a
+dirty SHA identifies nothing. `regenerate_all.sh` refuses to start on one.
+
 ### 4.2 Disk and compute
 
 - AHBA microarray download: **~4 GB** (abagen caches to `~/.abagen/` or `$ABAGEN_DATA`).

@@ -38,6 +38,16 @@ fi
 
 export WORKBENCH_DIR="${WORKBENCH_DIR:-$HOME/opt/workbench/bin_linux64}"
 
+# A dirty tree makes every manifest's git SHA a lie: it names a commit that is
+# not what ran. Ten artifacts were written that way before this check existed.
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+  echo "FATAL: working tree is dirty. Every artifact would record a git SHA that"
+  echo "does not identify the code that produced it. Commit or stash first:"
+  git status --short
+  exit 1
+fi
+echo "code state: $(git rev-parse --short HEAD) (clean)"
+
 step () {
   echo ""
   echo "=============================================================="
@@ -76,6 +86,9 @@ step "Phase 6  — mediation"                           $PY scripts/p6_mediation
 # --- released artifacts ---------------------------------------------------
 step "Annotation table"                               $PY scripts/build_annotation.py --ahba
 step "Figures"                                        $PY scripts/make_figures.py
+
+# Refuse to call it complete unless the provenance gate passes.
+step "Provenance audit (GATE)"                        $PY scripts/audit_provenance.py
 
 echo ""
 echo "=============================================================="
