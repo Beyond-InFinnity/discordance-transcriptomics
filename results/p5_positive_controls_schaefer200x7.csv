@@ -1,6 +1,0 @@
-kind,a,b,rho,n,expected
-internal,oef,cmro2,0.5820797391121396,97,positive (OEF rises with CMRO2 at fixed CBF)
-internal,oef,cbf,-0.32049495055754257,97,negative (OEF falls as CBF rises at fixed CMRO2)
-internal,cbf,cmro2,0.4426151904060593,97,positive (flow-metabolism coupling)
-cross_modality,cbf,raichle_cbf,0.32817431096149796,97,"positive (same physiology, different method)"
-cross_modality,cmro2,raichle_cmro2,0.0899300441826215,97,"positive (same physiology, different method)"

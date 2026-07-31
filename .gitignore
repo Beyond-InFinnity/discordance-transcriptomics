@@ -37,3 +37,17 @@ results/**
 *.swp
 .vscode/
 .idea/
+
+# Results are DERIVED DATA and are not tracked (R8's principle: provenance, not
+# payload). Tracking them caused the project's worst failure: `rsync ./ host:`
+# carried the laptop's committed copies onto a compute node and destroyed a
+# completed regeneration, and wiping results/ for a clean run made the tree
+# dirty, which the pipeline's own gate then refused to run on.
+#
+# Provenance does not require tracking. Every artifact carries a manifest with
+# the git SHA, config hash, package versions and seed that produced it, and
+# scripts/audit_provenance.py verifies they agree. Reproducibility lives in the
+# code plus scripts/regenerate_all.sh, not in a committed copy of the output.
+#
+# The public deliverable is data/derived/annotation/, released separately.
+results/
