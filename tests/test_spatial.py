@@ -428,3 +428,67 @@ class TestPreparedNulls:
             corr_with_null(base, y, nulls=pre, nulls_prepared=True)
         fast = time.perf_counter() - t
         assert fast < slow / 2, f"expected >2x, got {slow / max(fast, 1e-9):.1f}x"
+
+
+class TestRaggedSurrogatesInCorrWithNull:
+    """Targets with missing parcels — the bug's fourth appearance.
+
+    A rotation can pull an unobserved parcel into the window, so a map with
+    missing parcels leaves few complete draws. The cross-species vascular map
+    has 17 missing of 100 and leaves 2 of 10,000. Dropping incomplete draws
+    silently reduced its null to those 2, giving p-values that could only be
+    1/3, 2/3 or 1 — and it read as a legitimate null result.
+
+    It surfaced in gene_screen, then pls_with_spin, then Phase 4 once the nulls
+    were correctly paired per target. Fixed here so every caller inherits it.
+    """
+
+    @pytest.fixture
+    def ragged(self, rng):
+        n, n_perm = 100, 500
+        x = rng.normal(size=n)
+        y = x * 0.7 + rng.normal(size=n) * 0.6
+        x[rng.choice(n, 17, replace=False)] = np.nan
+        idx = rng.integers(0, n, size=(n, n_perm))
+        return x, y, x[idx]
+
+    def test_almost_no_draw_is_complete(self, ragged):
+        _x, _y, nulls = ragged
+        assert np.isfinite(nulls).all(axis=0).mean() < 0.05
+
+    def test_uses_nearly_every_draw(self, ragged):
+        x, y, nulls = ragged
+        res = corr_with_null(x, y, nulls=nulls)
+        assert res.n_perm > 0.9 * nulls.shape[1], (
+            f"only {res.n_perm}/{nulls.shape[1]} draws used"
+        )
+
+    def test_p_is_not_quantised_to_a_tiny_denominator(self, ragged):
+        """The symptom that gave the original away."""
+        x, y, nulls = ragged
+        assert corr_with_null(x, y, nulls=nulls).p_spin not in (1 / 3, 2 / 3, 1.0)
+
+    def test_still_detects_a_real_relationship(self, ragged):
+        x, y, nulls = ragged
+        assert corr_with_null(x, y, nulls=nulls).p_spin < 0.05
+
+    def test_calibrated_when_ragged_and_null(self, rng):
+        """Missing parcels must not manufacture significance."""
+        n, n_perm, trials = 100, 400, 150
+        below = 0
+        for _ in range(trials):
+            x = rng.normal(size=n)
+            x[rng.choice(n, 17, replace=False)] = np.nan
+            y = rng.normal(size=n)
+            idx = rng.integers(0, n, size=(n, n_perm))
+            if corr_with_null(x, y, nulls=x[idx]).p_spin < 0.05:
+                below += 1
+        rate = below / trials
+        assert 0.01 < rate < 0.13, f"ragged null rejects at {rate:.3f}, nominal 0.05"
+
+    def test_complete_surrogates_unchanged(self, maps):
+        """The clean path must be untouched by the ragged fix."""
+        x, y, nulls = maps
+        assert corr_with_null(x, y, nulls=nulls).p_spin == pytest.approx(
+            corr_with_null(x, y, nulls=nulls).p_spin
+        )

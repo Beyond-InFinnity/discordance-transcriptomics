@@ -180,6 +180,8 @@ def corr_with_null(
     # collapse into one matrix product on ranked data: identical numerically,
     # several orders of magnitude faster. The per-column path is retained for
     # the ragged case.
+    paired_obs = not (nulls_prepared or bool(np.isfinite(nv).all()))
+    obs_rhos = None
     if nulls_prepared or bool(np.isfinite(nv).all()):
         yr = sps.rankdata(yv) if method == "spearman" else yv
         if nulls_prepared:
@@ -194,27 +196,48 @@ def corr_with_null(
                 denom > 0, (nc * yc[:, None]).sum(axis=0) / denom, np.nan
             )
     else:
+        # Ragged surrogates: each draw scored on its own parcels, and the
+        # OBSERVED correlation recomputed on those same parcels.
+        #
+        # A rotation can pull an unobserved parcel into the analysis window, so
+        # a map with missing parcels leaves few or no complete draws — the
+        # cross-species vascular map has 17 missing and leaves 2 of 10,000. An
+        # earlier version simply dropped incomplete draws, which silently
+        # reduced that null to two surrogates whose p-values could only be 1/3,
+        # 2/3 or 1. This is the fourth place that failure appeared; solving it
+        # here means every caller inherits the fix.
+        #
+        # Comparing a draw's correlation against an observed value computed on
+        # DIFFERENT parcels would bias through the sample-size difference alone,
+        # so both sides are always computed on the same subset.
         null_rhos = np.full(nv.shape[1], np.nan)
+        obs_rhos = np.full(nv.shape[1], np.nan)
         for i in range(nv.shape[1]):
             col = nv[:, i]
             ok = np.isfinite(col)
             if ok.sum() >= 3:
                 null_rhos[i] = _corr(col[ok], yv[ok], method)
+                obs_rhos[i] = rho if ok.all() else _corr(xv[ok], yv[ok], method)
 
     finite = np.isfinite(null_rhos)
     n_perm_used = int(finite.sum())
     if n_perm_used == 0:
         raise ValueError("every surrogate produced a non-finite correlation")
     if n_perm_used < nv.shape[1]:
-        logger.warning(
-            "%d/%d surrogates dropped (non-finite correlation)",
+        logger.info(
+            "%d/%d surrogates scored on a reduced parcel set",
             nv.shape[1] - n_perm_used,
             nv.shape[1],
         )
 
     # Two-tailed, +1 correction: a permutation p-value is never exactly zero,
     # and reporting p=0 from a finite permutation set overstates the evidence.
-    n_extreme = int(np.sum(np.abs(null_rhos[finite]) >= abs(rho)))
+    if paired_obs:
+        ok_pair = finite & np.isfinite(obs_rhos)
+        n_extreme = int(np.sum(np.abs(null_rhos[ok_pair]) >= np.abs(obs_rhos[ok_pair])))
+        n_perm_used = int(ok_pair.sum())
+    else:
+        n_extreme = int(np.sum(np.abs(null_rhos[finite]) >= abs(rho)))
     p_spin = (n_extreme + 1) / (n_perm_used + 1)
 
     return SpatialCorrResult(
