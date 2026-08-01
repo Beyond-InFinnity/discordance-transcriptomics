@@ -152,6 +152,11 @@ step "Phase 6  — mediation"                           $PY scripts/p6_mediation
 
 # --- released artifacts ---------------------------------------------------
 step "Annotation table"                               $PY scripts/build_annotation.py --ahba
+# The app's molecular layer. Writes beside the annotation table rather than into
+# results/, because it is an app input rather than an analysis result -- and
+# because this script wipes results/, so a manifest kept there would be
+# destroyed by the run that produced it.
+step "Gene-set profiles (app input)"                  $PY scripts/build_geneset_profiles.py
 step "Figures"                                        $PY scripts/make_figures.py
 
 # Refuse to call it complete unless the provenance gate passes.
