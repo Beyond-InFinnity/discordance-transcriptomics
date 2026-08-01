@@ -330,6 +330,7 @@ def main() -> int:
         if len(comp):
             comp.to_csv(out / f"p4_competitive_nulls{tag}.csv", index=False)
         man.record(
+            outputs=[str(p) for p in sorted(out.glob("p4_*.csv"))],
             n_cells=len(idx),
             n_gene_sets=len(gsets),
             n_tests=len(df),

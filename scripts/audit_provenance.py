@@ -210,9 +210,15 @@ def main() -> int:
 
     print(f"\n{'=' * 70}")
     if n_fail:
-        print(f"VERDICT: NOT A CLEAN RUN — {n_fail} of 6 checks failed.")
-        print("Results in this directory come from more than one code state and")
-        print("should not be reported until regenerated in a single pass.")
+        failed = [t for t, ok, _ in checks if not ok]
+        print(f"VERDICT: NOT A CLEAN RUN — {n_fail} of {len(checks)} checks failed.")
+        for t in failed:
+            print(f"  failed: {t}")
+        # The message used to assert "results come from more than one code
+        # state" for ANY failure, which was wrong whenever check 1 passed — a
+        # misleading error is worse than a terse one, since it sends the reader
+        # after the wrong problem.
+        print("Do not report these results until the failures above are resolved.")
     else:
         print("VERDICT: CLEAN — every artifact from one code state, one tree, one run.")
     print(f"{'=' * 70}\n")

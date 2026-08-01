@@ -219,6 +219,7 @@ def main() -> int:
 
         sig = summ[summ.p < cfg.stats.alpha]
         man.record(
+            outputs=[str(p) for p in sorted(out.glob("p4b_*"))],
             n_cells=len(cells),
             n_cells_available=len(idx),
             stability_threshold=args.stability_threshold,

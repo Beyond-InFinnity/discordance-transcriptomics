@@ -135,6 +135,7 @@ def main() -> int:
     with manifest(f"p0_dynamic_range_{parc}", cfg) as man:
         df.to_csv(out, index=False)
         man.record(
+            outputs=[str(p) for p in sorted(out.glob("p0_dynamic_range_*.csv"))],
             parcellation=parc,
             spin_threshold=thr,
             detectable_true_rho={

@@ -219,6 +219,7 @@ def main() -> int:
         prof_df.to_csv(out / "x1_macaque_depth_profile.csv", index=False)
         np.save(tmp / "macaque_vascular_parcels.npy", depths)
         man.record(
+            outputs=[str(p) for p in sorted(out.glob("x1_*.csv"))],
             parcellation=parc,
             n_depths=int(depths.shape[0]),
             parcels_covered=int(np.isfinite(mid).sum()),

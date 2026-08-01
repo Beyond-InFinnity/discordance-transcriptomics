@@ -231,6 +231,7 @@ def main() -> int:
         if len(floor):
             floor.to_csv(out / "p0c_detectability_floor.csv", index=False)
         man.record(
+            outputs=[str(p) for p in sorted(out.glob("p0c_*.csv"))],
             probe_selection=args.probe_selection,
             donors=list(mats),
             n_gene_sets=len(rel),
