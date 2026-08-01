@@ -82,8 +82,12 @@ def build(results: Path) -> pd.DataFrame:
                 "detectability_floor": floor,
                 "resolvable": bool(usable and implied >= floor),
                 "untestable": not usable,
-                "p_competitive": r.p_competitive,
-                "pct_spin_sig": r.pct_spin_sig,
+                # Supplementary context, not inputs to the resolvability
+                # calculation. Phase 4 omits the competitive-null columns
+                # entirely under reduced settings, so read them defensively
+                # rather than crashing a run that is otherwise fine.
+                "p_competitive": r.get("p_competitive", float("nan")),
+                "pct_spin_sig": r.get("pct_spin_sig", float("nan")),
             }
         )
     return pd.DataFrame(rows).sort_values("implied_true_rho", ascending=False)
