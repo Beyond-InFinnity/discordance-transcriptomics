@@ -163,6 +163,9 @@ step "Annotation table"                               $PY scripts/build_annotati
 # destroyed by the run that produced it.
 step "Gene-set profiles (app input)"                  $PY scripts/build_geneset_profiles.py
 step "Figures"                                        $PY scripts/make_figures.py
+# The five display items the manuscript argues with. make_figures.py predates the
+# rewrite and depicts none of the resolvability analysis, which is now Figure 1.
+step "Manuscript figures"                             $PY scripts/make_manuscript_figures.py
 
 # Refuse to call it complete unless the provenance gate passes.
 # Reported, not gated. A regeneration should not fail because prose is stale --

@@ -25,7 +25,7 @@ that pass both nulls. Against discordance, 1 of 22 tests is resolvable; against
 baseline oxygen extraction fraction (OEF), 2 of 11.
 
 Within that resolvable set, **pericyte and mural-cell gene expression predicts
-baseline OEF** (ρ = −0.391, sign-consistent across 100% of pipelines, spatially
+baseline OEF** (ρ = −0.391, sign-consistent across 100% of 240 tests, spatially
 significant in 86%, competitive *p* = 0.0004), in the pre-registered direction,
 strengthening when the unimodal–transmodal hierarchy is partialled out. It does
 not survive family-wide correction (minimum adjusted *p* = 0.130).
@@ -141,8 +141,12 @@ Following Arnatkevičiūtė et al. (2019) and Markello et al. (2021), and adopti
 the multiverse framing of Steegen et al. (2016) — whose necessity in neuroimaging
 Botvinik-Nezer et al. (2020) demonstrated empirically — we run 120 cells spanning
 `probe_selection` × `lr_mirror` × `missing` × `tolerance` × `norm_matched` ×
-stability threshold. Effects are summarised as median, inter-quartile range, and
-percentage of cells with consistent sign.
+stability threshold. Phase 4 additionally crosses each pipeline with the
+differential-stability thresholds at which a gene set remains large enough to
+score, so its summary fractions are over **pipeline × threshold tests** — 240 for
+the pericyte/mural set — rather than over the 120 pipelines. Effects are
+summarised as median, inter-quartile range, and percentage of tests with
+consistent sign.
 
 ### 2.5 Null models
 
@@ -288,8 +292,8 @@ Across 120 pipelines and both null models:
 | HALLMARK_OXPHOS | baseline OEF | −0.203 | [−0.235, −0.172] | 100% | 0% | 0.107 | no |
 
 The pericyte/mural → baseline OEF association is the clearest result. It is
-negative as pre-specified; sign-consistent across all 120 pipelines; spatially
-significant in 86%; and it passes the competitive null decisively (*z* = −3.49).
+negative as pre-specified; sign-consistent across all 240 tests spanning 120
+pipelines; spatially significant in 86%; and it passes the competitive null decisively (*z* = −3.49).
 Its implied true effect (0.526) comfortably exceeds its floor (0.330).
 
 **It does not survive FDR correction across the 55-way gene-set × target family
@@ -447,8 +451,8 @@ produces BOLD–CMRO₂ discordance. **The first is supported. The second is not
 refuted — it is untested, and we can say by how much.**
 
 Pericyte and mural-cell gene expression predicts baseline oxygen extraction with
-unusual robustness for this field: every one of 120 pipelines agrees on sign, 86%
-reach spatial significance, the competitive null is passed decisively, and the
+unusual robustness for this field: all 240 tests across 120 pipelines agree on
+sign, 86% reach spatial significance, the competitive null is passed decisively, and the
 effect strengthens under hierarchy control (Fornito et al., 2019). Pericytes are
 contractile and regulate capillary flow directly (Hall et al., 2014; Attwell et
 al., 2010; Iadecola, 2017), so a relationship between mural-cell expression and
@@ -575,12 +579,50 @@ Atlas is described in Hawrylycz et al. (2012).
    descriptive of the design rather than a test, and uses no outcome information
    beyond reliabilities computed in Phase 0.
 
+## Figure captions
+
+**Figure 1. What this design can resolve.** (**A**) Implied true effect (observed
+ρ ÷ attenuation ceiling) against the detectability floor for all 33 gene-set ×
+outcome tests. Points above the diagonal are resolvable; three are, labelled with
+leader lines. Colour denotes outcome. (**B**) Gene-set panel reliability across
+AHBA donors — the limiting term in every test a set enters. Blue ≥ 0.55;
+vermillion ≤ 0. `GOBP_BLOOD_VESSEL_MORPHOGENESIS` has negative reliability and is
+untestable against any map at any effect size.
+
+**Figure 2. The primary effect.** (**A**) Spearman ρ between pericyte/mural
+expression and baseline OEF across 240 tests (120 preprocessing pipelines × 2
+differential-stability thresholds); vertical jitter is for display only. Filled
+points reach spin *p* < 0.05; open points do not. Vermillion line is the median.
+(**B**) Raw versus hierarchy-partialled effect under both covariate
+specifications, one grey line per multiverse cell (*n* = 12). The pre-registered
+specification strengthens the effect; the extended one abolishes it.
+
+**Figure 3. The mediation is bounded, not null.** Implied true |ρ| for the
+mediator→outcome path (baseline OEF → outcome) against the detectability floor for
+each outcome (grey). All three estimates fall inside the undetectable region: a
+large effect (|ρ| ≳ 0.33) is excluded, a moderate one is not.
+
+**Figure 4. Positive controls, both map sources.** Internal physiological
+identities and cross-modality comparisons against Raichle PET references,
+computed on our reconstruction (circles) and on the authors' published group maps
+(squares). Green shading marks controls behaving as expected; vermillion marks the
+one that fails. Both map sources miss the PET CMRO₂ reference, locating the
+disagreement in mqBOLD versus PET rather than in our processing.
+
+**Figure 5. Dropout across the whole mqBOLD chain.** |ρ| between the
+scanner-dropout proxy and every link of the chain, with the signed value
+annotated. Dashed line is the §9 gate at |ρ| = 0.5. The three most upstream
+links — where field inhomogeneity enters — are the lowest.
+
+All figures are generated by `scripts/make_manuscript_figures.py` at 180 mm
+two-column width, Okabe-Ito colour-vision-safe palette, 7 pt minimum text, and are
+emitted as vector PDF alongside 400 dpi raster.
+
+---
+
 ## Appendix B — Outstanding
 
 - Citation for the macaque vascular atlas.
-- Figures: F1–F8 are generated by `scripts/make_figures.py`; captions and selection
-  are not yet written. At ~5,000 words the manuscript should carry roughly five
-  display items; §3.2's resolvability table is the natural Figure 1.
 - The required-reliability curve in §4.
 - The dissociation simulation in §4.
 - Bootstrap confidence intervals over parcels.
