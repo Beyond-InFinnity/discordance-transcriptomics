@@ -26,14 +26,17 @@ out.
 
 The conjecture nonetheless fails, and we locate where. Across 15,840 parcel-level
 path models, the exposure→mediator path is supported in 88% of pipelines and the
-mediator→outcome path in **0%**; no mediation is supported. Independently, an ex
-vivo macaque cortical vascular density map — a measurement rather than a
-molecular proxy — is unrelated to discordance in any parameterisation
-(|ρ| ≤ 0.09, all *p* > 0.6).
+mediator→outcome path in **0%**. Every mediator→outcome estimate falls below this
+design's detectability floor, so we report a bound rather than an absence: a large
+effect (|ρ| ≳ 0.33) is excluded, a moderate one is not. Independently, an ex vivo
+macaque vascular density map is unrelated to discordance (|ρ| ≤ 0.09, all
+*p* > 0.6), though its cross-species registration is weakest in association
+cortex.
 
 The molecular half of the capillary-density conjecture holds; the vascular half
-does not. We report a structured negative result with the positive controls that
-make it interpretable and the one control we fail.
+is bounded well below what the conjecture requires. We report a structured
+negative result with the positive controls that make it interpretable and the one
+control we fail.
 
 ---
 
@@ -236,7 +239,22 @@ it is neither unmeasurable nor suspiciously clean.
 pre-specified association that does not clear family-wide correction, and we do not
 present it as confirmed.
 
+**The two null models disagree, and the direction is instructive.** The headline
+effect passes the competitive null decisively (*p* = 0.0004) but fails FDR. The
+cross-species positive control does the reverse: spatially significant in 100% of
+pipelines, yet competitive *p* = 0.09. If the assay that must work fails the
+competitive null while the hypothesis test passes it, the competitive null is not
+simply measuring "is this gene set special". It is sensitive to set size and
+stability structure in ways that small curated sets (pericyte/mural, 4 genes)
+and broader ones (endothelial, 6 genes) do not share. We therefore treat
+*p* = 0.0004 as evidence that the effect is not a generic property of any
+stability-matched set of that size — not as confirmatory significance.
+
 ### 3.4 Hierarchy control
+
+The gene-set step here runs on 12 of the 120 multiverse cells for compute reasons,
+so its pipeline-fraction statistics rest on a twelfth of the evidence behind
+Phases 4 and 6. Reference-map results below use the full parcel set.
 
 Under the **pre-registered** specification (principal gradient + T1w/T2w myelin +
 dropout proxy), pericyte/mural → baseline OEF *strengthens*: partial ρ = −0.419
@@ -265,9 +283,17 @@ erratically on weak effects, amplifying near-zero associations by 300–490% wit
 sign flips — the signature of over-fitting a five-covariate, spatially smooth
 design on 100 parcels.
 
-**The honest summary is that this association survives the pre-registered test and
-fails a stricter one, and that we believe the stricter one is too strict.** We
-present both and let readers weigh them.
+Two readings remain available and the data do not decide between them. Ours is
+that gradients 2–3 absorb metabolic signal, making the extended specification
+over-controlled. The alternative is that our maps genuinely are gradient-2/3
+structured and those gradients are legitimate confounds, in which case the effect
+should not survive.
+
+Readers should note that the specification we favour is also the one under which
+our headline result survives. That is a coincidence worth being suspicious of, and
+it is why both specifications are computed on every regeneration rather than
+selected afterwards. **This association survives the pre-registered test and fails
+a stricter one; which test is right is an author opinion, not a result.**
 
 ### 3.5 H2 — mediation fails at the second link
 
@@ -284,8 +310,24 @@ extraction-mode discordance:
 - **path b** (mediator → outcome): −0.217, significant in **0%**
 - limiting path: **b**
 
-Baseline OEF does not predict discordance in these data, so nothing can be mediated
-through it regardless of how well gene expression predicts OEF.
+Baseline OEF does not predict discordance *detectably* in these data, so nothing
+can be mediated through it regardless of how well gene expression predicts OEF.
+
+**How large an effect can we exclude?** This matters more than the null itself,
+and the reliabilities in §3.1 answer it. The discordance maps are the
+power-limiting term (split-half 0.579 and 0.595) against baseline OEF's 0.978:
+
+| outcome | path b | ceiling √(r₁r₂) | implied true \|ρ\| | detectability floor |
+|---|---|---|---|---|
+| extraction | −0.217 | 0.752 | 0.289 | 0.331 |
+| overshoot | +0.057 | 0.763 | 0.075 | 0.313 |
+| coupling angle | +0.141 | 0.834 | 0.169 | 0.301 |
+
+Every implied true effect falls **below** the floor this design can resolve. We
+therefore report a bound rather than an absence: **a large mediator→outcome
+effect (|ρ| ≳ 0.33) is excluded; a moderate one is not.** Claiming that baseline
+OEF plays no causal role would overstate what a 100-parcel design with a
+reliability-0.58 outcome can establish.
 
 ### 3.6 An independent test of the capillary conjecture
 
@@ -302,9 +344,16 @@ tested the conjecture directly, using the ex vivo macaque vascular density map a
 | principal gradient | −0.333 | 0.13 |
 
 Nothing. An independent, direct measurement of cortical vascular density shows no
-relationship to discordance in any parameterisation. This is the strongest
-statement the study makes, because it does not depend on the transcriptomic
-machinery at all.
+relationship to discordance in any parameterisation, and it does not depend on the
+transcriptomic machinery at all.
+
+Three limits keep this convergent rather than decisive. The map derives from
+**four** macaques. Human cortical expansion means that after cross-species surface
+registration only **83 of 100** left-hemisphere parcels receive values. And the
+registration is **least accurate in association cortex** — which is precisely
+where the hypothesis lives, and where a null is therefore cheapest to obtain. A
+registration-quality gradient aligned with the principal gradient could by itself
+produce the result in this table, and we cannot exclude that.
 
 Consistently, pericyte/mural expression itself shows essentially no relationship to
 macaque vascular density (ρ = −0.05). Whatever pericyte gene expression is tracking
@@ -380,9 +429,9 @@ path in 100% of pipelines, and an independent ex vivo measurement of vascular
 density is unrelated to discordance in any form. The two failures are
 methodologically independent — one transcriptomic, one anatomical — and they agree.
 
-We think the more interesting reading is that **baseline OEF is not on the causal
-path to discordance**, despite Epp et al.'s observation that discordant voxels
-differ in baseline OEF. A group-level topographic association between OEF and
+The more interesting reading is that **any between-region contribution of
+baseline OEF to discordance is at most moderate** (§3.5), despite Epp et al.'s
+observation that discordant voxels differ in baseline OEF. A group-level topographic association between OEF and
 discordance is what their result implies; our path model asks whether parcel-wise
 variation in OEF predicts parcel-wise variation in discordance, and it does not.
 These are compatible: a between-condition mechanism need not leave a between-region
@@ -419,8 +468,19 @@ Stated here rather than discovered in review.
   used here. §3.7 quantifies one consequence.
 - **The dropout confound is mitigated, not eliminated.** It is carried as a
   mandatory covariate throughout, and the whole-chain gate bounds it at |ρ| ≤ 0.32.
-- **The primary finding does not survive family-wide FDR correction**, and does not
-  survive a stricter hierarchy specification that we argue is over-controlled.
+- **The primary finding does not survive family-wide FDR correction** (minimum
+  adjusted *p* = 0.130), and does not survive a stricter hierarchy specification
+  that we argue — but cannot demonstrate — is over-controlled.
+- **The total inferential surface is large**: 55 gene-set × target combinations in
+  Phase 4, 528 gene-set partials per hierarchy specification in Phase 5, 132
+  mediation combinations in Phase 6, and 12 PLS components in Phase 4b. Each family
+  is corrected internally; none is corrected against the others. We report a robust
+  *association*, not a confirmed effect.
+- **The mediation is bounded, not null.** Every path-b estimate lies below this
+  design's detectability floor (§3.5), so a moderate mediator→outcome effect
+  remains possible.
+- **The cross-species control is registration-limited** in exactly the association
+  cortex the hypothesis concerns, and rests on four animals and 83 parcels.
 - **Phase 5 runs on 12 multiverse cells**, not 120, for compute reasons; Phases 4
   and 6 use all 120.
 - **The pericyte/mural set is 4 genes of 5** — ANPEP is absent from the AHBA
@@ -444,6 +504,39 @@ the primary effect, the mediation path structure, and every gate.
 
 `scripts/regenerate_all.sh` rebuilds everything from the expression multiverse in
 ~3.7 hours on a 16-thread host.
+
+---
+
+## 7. Data and code availability
+
+All primary data are public and none were generated by this study.
+
+| Resource | Identifier |
+|---|---|
+| Epp et al. mqBOLD derivatives | OpenNeuro `ds004873` (snapshot 2.0.x) |
+| Allen Human Brain Atlas microarray | `abagen.fetch_microarray`; 5 of 6 donors (15496 unavailable upstream) |
+| Reference and null maps | `neuromaps` (Markello et al., 2022) |
+| Gene sets | MSigDB via `gseapy`; version pinned in `data/MANIFEST.yaml` |
+| Macaque vascular density | see `[TODO: citation]`; Yerkes19 → fs_LR registration |
+
+Analysis code, the frozen gene-set definitions, and the released parcel-level
+annotation table are available at `[TODO: repository URL]`. Every result artifact
+carries a manifest recording git SHA, config hash, package versions, seed, and
+input checksums; `scripts/audit_provenance.py` gates the pipeline on their
+consistency and `scripts/check_paper_numbers.py` verifies that the values in this
+manuscript match the artifacts they are drawn from.
+
+## 8. Ethics
+
+This is a secondary analysis of two publicly released datasets. Ethical approval
+and participant consent were obtained by the original investigators; no new human
+or animal data were collected. Post-mortem tissue governance for the Allen Human
+Brain Atlas is described in Hawrylycz et al. (2012).
+
+## 9. Funding and competing interests
+
+`[TODO]` — Funding sources and competing interests to be declared before
+submission.
 
 ---
 
