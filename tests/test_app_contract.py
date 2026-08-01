@@ -105,11 +105,17 @@ class TestAnnotationContract:
             v = annotation[col].dropna()
             assert ((v >= 0) & (v <= 1)).all(), f"{col} outside [0, 1]"
 
-    def test_modes_do_not_exceed_total(self, annotation):
-        """Extraction and overshoot partition discordance; they cannot exceed it."""
+    def test_modes_partition_the_total_exactly(self, annotation):
+        """Extraction and overshoot are a partition, not merely a subset.
+
+        The app displays all three to one decimal place precisely so a reader
+        can see them close. At whole percents 0.475 and 0.275 render as 48% and
+        28% against a total of 75%, and a correct decomposition reads as broken
+        arithmetic. If these ever stop summing, the display is wrong too.
+        """
         a = annotation
         total = a.discordance_risk_extraction + a.discordance_risk_overshoot
-        assert (total <= a.discordance_risk + 1e-9).all()
+        assert (total - a.discordance_risk).abs().max() < 1e-9
 
 
 class TestProfileContract:

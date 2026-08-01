@@ -128,17 +128,17 @@ with tab_region:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(
         "Discordance risk",
-        f"{row.discordance_risk:.0%}",
+        f"{row.discordance_risk:.1%}",
         help=helps.get("discordance_risk", ""),
     )
     c2.metric(
         "Extraction mode",
-        f"{row.discordance_risk_extraction:.0%}",
+        f"{row.discordance_risk_extraction:.1%}",
         help=helps.get("discordance_risk_extraction", ""),
     )
     c3.metric(
         "Overshoot mode",
-        f"{row.discordance_risk_overshoot:.0%}",
+        f"{row.discordance_risk_overshoot:.1%}",
         help=helps.get("discordance_risk_overshoot", ""),
     )
     c4.metric(

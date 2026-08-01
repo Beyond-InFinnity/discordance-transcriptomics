@@ -56,3 +56,6 @@ results/
 *.log
 # ...as is the completion sentinel regenerate_all.sh drops.
 regen.done
+
+# Playwright MCP scratch (screenshots, console logs).
+.playwright-mcp/
