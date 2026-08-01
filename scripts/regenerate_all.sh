@@ -73,11 +73,25 @@ step () {
   "$@"
 }
 
-# Prerequisites that are NOT regenerated: the multiverse parquets and the
-# per-donor matrices. Fail early and loudly rather than half-running.
+# Prerequisites that are NOT regenerated: the expression multiverse and the
+# warped CBV-corrected CMRO2 maps. Both are upstream data preparation, cost
+# hours, and are untouched by any analysis-layer defect. Fail early and loudly
+# rather than half-running.
+#
+# Their manifests live beside their data rather than in results/, precisely
+# because this script wipes results/ — provenance kept there would be destroyed
+# by the regeneration that depends on it. Echo the code state that produced
+# them, so a mismatch with the analysis SHA is visible rather than assumed away.
 for d in data/derived/expression/multiverse; do
   n=$(ls "$d"/*.parquet 2>/dev/null | wc -l)
   [ "$n" -ge 100 ] || { echo "FATAL: $d has $n parquets; run p3_multiverse.py first"; exit 1; }
+done
+n=$(ls data/derived/warped/*.nii.gz 2>/dev/null | wc -l)
+[ "$n" -ge 30 ] || { echo "FATAL: data/derived/warped has $n maps; run warp_cbv_cmro2.py first"; exit 1; }
+for m in data/derived/expression/multiverse/p3_multiverse_*.manifest.json \
+         data/derived/warped/warp_cbv_cmro2.manifest.json; do
+  [ -f "$m" ] && echo "  upstream $(basename "$m" .manifest.json): $($PY -c \
+    "import json,sys;print(json.load(open(sys.argv[1]))['git_sha'][:8])" "$m" 2>/dev/null || echo unknown)"
 done
 
 # --- targets first: everything downstream reads them ---------------------
@@ -86,11 +100,22 @@ step "Phase 2 — target maps (3 parcellations)"        $PY scripts/p2_build_tar
 # --- gates ----------------------------------------------------------------
 step "Phase 0a — reliability gate"                    $PY scripts/p0_reliability.py
 step "Phase 0b — dropout gate"                        $PY scripts/p0_dropout.py
+# The §9 gate was applied to the final maps only, and passed. mqBOLD is a chain
+# (T2/T2' -> R2' -> OEF -> CMRO2 -> dCMRO2 -> discordance) and a gate on the last
+# link cannot see corruption at the first, so the threshold is applied to every
+# link. This is a gate, not an extra: it must run on every regeneration or the
+# gate that actually constrains the project is missing from the record.
+step "Phase 0b — dropout vs the whole mqBOLD chain (GATE)" $PY scripts/p0b_full_dropout_audit.py
 step "Phase 0  — dynamic range / detectability"       $PY scripts/p0_dynamic_range.py
 step "Phase 0c — gene-set map reliability"            $PY scripts/p0c_geneset_reliability.py
 
-# --- cross-species positive control ---------------------------------------
+# --- positive controls ------------------------------------------------------
 step "x1 — macaque vascular control"                  $PY scripts/x1_macaque_vascular.py
+# Reads p0_dynamic_range's reliability, so it must follow it. Characterises the
+# one positive control the project fails: our baseline CMRO2 against the Raichle
+# PET reference. Omitting it from the regeneration would leave the failure
+# documented only in prose.
+step "x2 — CMRO2 positive-control audit"              $PY scripts/x2_cmro2_audit.py
 
 # --- the analysis proper --------------------------------------------------
 step "Phase 4  — frozen gene sets, both nulls"        $PY scripts/p4_genesets.py --n-draws $NDRAWS $P4_CELLS

@@ -184,7 +184,7 @@ def main() -> int:
     idx.to_csv(idx_path, index=False)
 
     ok = idx.status.isin(["ok", "cached"])
-    with manifest(f"p3_multiverse_{parc}", cfg) as man:
+    with manifest(f"p3_multiverse_{parc}", cfg, results_dir=out_dir) as man:
         man.record(
             parcellation=parc,
             n_cells=len(idx),

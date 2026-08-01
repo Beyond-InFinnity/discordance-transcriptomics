@@ -155,8 +155,9 @@ def main() -> int:
     df = pd.DataFrame(rows)
     ok = df.status.str.startswith("ok").fillna(False)
 
-    with manifest("warp_cbv_cmro2", cfg) as man:
-        csv = cfg.path("derived") / "warped" / "warp_validation.csv"
+    warped_dir = cfg.path("derived") / "warped"
+    with manifest("warp_cbv_cmro2", cfg, results_dir=warped_dir) as man:
+        csv = warped_dir / "warp_validation.csv"
         df.to_csv(csv, index=False)
         man.record(
             n_attempted=len(df),
