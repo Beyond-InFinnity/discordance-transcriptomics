@@ -19,9 +19,13 @@ cd "$(dirname "$0")/.."
 # regen.log with no regen.done beside it means "in flight".
 remote_state=$(ssh -o ConnectTimeout=15 "$HOST" '
   cd ~/discordance-transcriptomics 2>/dev/null || exit 0
-  running=$(pgrep -fc regenerate_all || true)
+  # Bracket the first character so this pattern does not match the very
+  # command line that carries it -- without the trick pgrep counts the guard
+  # itself, the check reads INFLIGHT forever, and a check that always refuses
+  # is one people learn to bypass.
+  running=$(pgrep -fc "[r]egenerate_all\.sh" || true)
   if [ -f regen.log ] && [ ! -f regen.done ]; then echo "INFLIGHT";
-  elif [ "${running:-0}" -gt 1 ]; then echo "INFLIGHT";
+  elif [ "${running:-0}" -gt 0 ]; then echo "INFLIGHT";
   else echo "IDLE"; fi' 2>/dev/null || echo "UNREACHABLE")
 if [ "$remote_state" = "INFLIGHT" ]; then
   echo "REFUSING: a regeneration is still running on $HOST."
