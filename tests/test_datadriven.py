@@ -579,3 +579,70 @@ class TestNoScriptTrustsAStoredPath:
         assert not offenders, "read_parquet from a stored index path:\n" + "\n".join(
             offenders
         )
+
+
+class TestHierarchySpecificationsAreWellFormed:
+    """Both hierarchy specifications must be runnable, not merely declared.
+
+    HIERARCHY_COVARIATES_EXTENDED named two maps that were never registered in
+    REFERENCE_MAPS, so --covariates extended raised KeyError at the first
+    partial correlation. Two separate str.replace patches had silently
+    no-matched, and checking `--help` for the word "covariates" passed because
+    the word also appears in the module docstring.
+    """
+
+    def test_every_covariate_is_resolvable(self):
+        from src.stats.hierarchy import (
+            HIERARCHY_COVARIATES,
+            HIERARCHY_COVARIATES_EXTENDED,
+            REFERENCE_MAPS,
+        )
+
+        for spec, name in (
+            (HIERARCHY_COVARIATES, "principal"),
+            (HIERARCHY_COVARIATES_EXTENDED, "extended"),
+        ):
+            missing = [c for c in spec if c not in REFERENCE_MAPS]
+            assert not missing, f"{name} names unregistered maps: {missing}"
+
+    def test_extended_is_a_superset_of_principal(self):
+        from src.stats.hierarchy import (
+            HIERARCHY_COVARIATES,
+            HIERARCHY_COVARIATES_EXTENDED,
+        )
+
+        assert set(HIERARCHY_COVARIATES) <= set(HIERARCHY_COVARIATES_EXTENDED), (
+            "the sensitivity analysis must control for everything the "
+            "confirmatory one does, or the two are not comparable"
+        )
+
+    def test_p5_exposes_both_specifications(self):
+        """The flag must exist, not just the word in a docstring."""
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        out = subprocess.run(
+            [sys.executable, str(root / "scripts/p5_hierarchy.py"), "--help"],
+            capture_output=True,
+            text=True,
+            cwd=root,
+        ).stdout
+        assert "--covariates" in out
+        assert "principal" in out and "extended" in out
+
+    def test_p5_targets_include_the_discordance_modes(self):
+        """The decisive phase must test the maps the project is about.
+
+        It ran for weeks on coupling_n and baseline_oef only, so Phase 4's
+        astrocyte-vs-overshoot result had never faced the hierarchy control.
+        """
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from p5_hierarchy import TARGETS
+
+        assert "discordance_extraction" in TARGETS
+        assert "discordance_overshoot" in TARGETS

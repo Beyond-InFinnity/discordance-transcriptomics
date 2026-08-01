@@ -42,7 +42,12 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data.parcellate import gifti_for_nulls
-from src.data.targets import load_dropout_proxy, load_target_map
+from src.data.targets import (
+    discordance_modes,
+    load_coupling_components,
+    load_dropout_proxy,
+    load_target_map,
+)
 from src.stats.hierarchy import (
     HIERARCHY_COVARIATES,
     HIERARCHY_COVARIATES_EXTENDED,
@@ -60,7 +65,18 @@ from p4b_datadriven import select_cells
 
 logger = logging.getLogger("p5_hierarchy")
 
-TARGETS = ["coupling_n", "baseline_oef"]
+# The discordance modes were absent until 2026-08-01, which meant the phase
+# CLAUDE.md calls DECISIVE never tested the maps the project is actually about.
+# Phase 4's astrocyte-vs-overshoot result had therefore never faced the
+# hierarchy control at all. They are separate targets rather than one column
+# because they are topographically distinct (Spearman -0.56) and summing them
+# cancels signal — the combined measure is less reliable than either part.
+TARGETS = [
+    "coupling_n",
+    "baseline_oef",
+    "discordance_extraction",
+    "discordance_overshoot",
+]
 
 
 def main() -> int:
@@ -68,6 +84,13 @@ def main() -> int:
     ap.add_argument("--config", default="config/base.yaml")
     ap.add_argument("--parcellation", default=None)
     ap.add_argument("--targets", nargs="*", default=TARGETS)
+    ap.add_argument(
+        "--covariates",
+        choices=("principal", "extended"),
+        default="principal",
+        help="principal = pre-registered gradient 1 + myelin (confirmatory); "
+        "extended = gradients 1-3 + myelin (disclosed sensitivity analysis)",
+    )
     ap.add_argument(
         "--max-cells",
         type=int,
@@ -127,8 +150,15 @@ def main() -> int:
 
     rows: list[dict] = []
 
+    modes = None
     for target_name in args.targets:
-        target, _tmeta = load_target_map(cfg, target_name, parc, masked=True)
+        if target_name.startswith("discordance_"):
+            if modes is None:
+                d_cbf, d_cmro2, _s, _p = load_coupling_components(parc, masked=True)
+                modes = discordance_modes(d_cbf, d_cmro2)
+            target = getattr(modes, target_name.split("_", 1)[1])
+        else:
+            target, _tmeta = load_target_map(cfg, target_name, parc, masked=True)
         nulls = make_nulls(
             target,
             atlas=cfg.parcellation.primary.space,

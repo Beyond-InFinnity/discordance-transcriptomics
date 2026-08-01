@@ -6,7 +6,14 @@
 set -euo pipefail
 HOST="${1:?usage: pull_results.sh <host>}"
 cd "$(dirname "$0")/.."
-rsync -a "$HOST:~/discordance-transcriptomics/results/" results/
+# --delete, so this MIRRORS rather than merges.
+#
+# Without it, rsync leaves local files that the remote does not have, so a fresh
+# run's 14 artifacts land beside whatever the laptop was already holding and the
+# directory becomes a blend of runs — the exact pollution this script exists to
+# prevent. The audit caught it, but a tool that needs its own audit to catch its
+# own bug is not doing its job.
+rsync -a --delete "$HOST:~/discordance-transcriptomics/results/" results/
 .venv/bin/python - <<'PY'
 import json, pathlib
 from collections import Counter

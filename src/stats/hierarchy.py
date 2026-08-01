@@ -43,6 +43,11 @@ __all__ = [
 REFERENCE_MAPS: dict[str, tuple[str, str]] = {
     # The confound to beat.
     "margulies_gradient1": ("margulies2016", "fcgradient01"),
+    # Registered for the extended (sensitivity) hierarchy specification. Our
+    # maps track these MORE than gradient 1: the coupling angle sits at +0.04
+    # against gradient 1 but +0.46 and +0.49 against 2 and 3.
+    "margulies_gradient2": ("margulies2016", "fcgradient02"),
+    "margulies_gradient3": ("margulies2016", "fcgradient03"),
     "t1w_t2w_myelin": ("hcps1200", "myelinmap"),
     # §9 comparison maps.
     "raichle_cmrglc": ("raichle", "cmrglc"),
