@@ -291,6 +291,21 @@ Across 120 pipelines and both null models:
 | glucose/lactate transport | extraction | +0.229 | [+0.180, +0.277] | 100% | 27% | 0.060 | no |
 | HALLMARK_OXPHOS | baseline OEF | −0.203 | [−0.235, −0.172] | 100% | 0% | 0.107 | no |
 
+**Of the three resolvable tests, one matches its pre-registered direction, one
+contradicts it, and one had no direction specified.** Pericyte/mural → baseline
+OEF is negative as pre-specified. HALLMARK_ANGIOGENESIS → baseline OEF was
+pre-registered as *positive* and is **−0.355** — the strongest competitive-null
+result in the study, in the wrong direction. Astrocyte → overshoot carried no
+directional prediction and can therefore neither confirm nor refute H1.
+
+We read the reversal as an error in the pre-registration rather than in the data.
+The two vascular sets agree with each other: higher vascular gene expression,
+lower baseline oxygen extraction, which is what more delivery per unit demand
+implies. The prediction that angiogenesis would track OEF *positively* does not
+follow from that mechanism, and we should not have committed to it. Reporting it
+as a directional failure is the honest accounting, and it is why the confirmatory
+status of H1 is weaker than the effect sizes alone suggest.
+
 The pericyte/mural → baseline OEF association is the clearest result. It is
 negative as pre-specified; sign-consistent across all 240 tests spanning 120
 pipelines; spatially significant in 86%; and it passes the competitive null decisively (*z* = −3.49).
