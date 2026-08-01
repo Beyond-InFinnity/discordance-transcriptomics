@@ -179,3 +179,67 @@ class TestManifest:
         m = Manifest(name="x", seed=42)
         m.add_input(tmp_path / "does_not_exist")
         assert "MISSING" in m.inputs.values()
+
+
+class TestOutputDeclarationsAreConstructible:
+    """A crash while *declaring* outputs discards the whole run.
+
+    The manifest write is the last statement in every phase script, after all
+    the compute. ``p5_hierarchy`` declared its outputs by globbing::
+
+        outputs=[str(p) for p in sorted(out_dir.glob(f"p5_*{tag}*.csv"))]
+
+    ``tag`` is ``""`` for the pre-registered specification, so the pattern
+    became ``p5_**.csv``. pathlib rejects ``**`` unless it is an entire path
+    component, so the run raised ValueError *after* computing and writing every
+    result, and the chained sensitivity run never started. Four hours of spin
+    nulls produced no manifest.
+
+    Any glob pattern built by interpolation must therefore survive its
+    interpolations being empty.
+    """
+
+    @staticmethod
+    def _glob_patterns(path):
+        """Every ``.glob(...)`` pattern in a file, interpolations blanked."""
+        import ast
+
+        out = []
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in ("glob", "rglob")
+                and node.args
+            ):
+                continue
+            arg = node.args[0]
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                out.append((node.lineno, arg.value))
+            elif isinstance(arg, ast.JoinedStr):
+                # Blank every {..} to model the shortest possible expansion.
+                lit = "".join(
+                    v.value
+                    for v in arg.values
+                    if isinstance(v, ast.Constant) and isinstance(v.value, str)
+                )
+                out.append((node.lineno, lit))
+        return out
+
+    def test_every_glob_pattern_survives_empty_interpolation(self):
+        import pathlib
+
+        root = pathlib.Path(__file__).resolve().parents[1]
+        offenders = []
+        for py in sorted((root / "scripts").glob("*.py")) + sorted(
+            (root / "src").rglob("*.py")
+        ):
+            for lineno, pattern in self._glob_patterns(py):
+                try:
+                    next(pathlib.Path(root).glob(pattern), None)
+                except ValueError as exc:
+                    offenders.append(f"{py.name}:{lineno}  {pattern!r}  {exc}")
+        assert not offenders, "unconstructible glob patterns:\n  " + "\n  ".join(
+            offenders
+        )

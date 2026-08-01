@@ -320,7 +320,7 @@ def main() -> int:
             "target"
         )["rho"]
         man.record(
-            outputs=[str(p) for p in sorted(out_dir.glob(f"p5_*{tag}*.csv"))],
+            outputs=[str(csv), str(out_dir / f"p5_positive_controls_{parc}{tag}.csv")],
             parcellation=parc,
             n_tests=len(df),
             covariates=cov_names,
