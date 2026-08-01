@@ -76,12 +76,16 @@ nbstripout
 # happened: cu121 was installed by hand, chosen from memory rather than from the
 # hardware, and left the workstation's RTX 5050 unusable for a day.
 #
-# Install per machine, choosing the index from the card, and check
-# torch.cuda.get_arch_list() against the device's compute capability:
+# The project standardises on torch 2.9.1+cu128 and computes solely on the
+# workstation, so the conflict above no longer bites: the 1080 Ti is simply out
+# of scope. Given a choice between a 2017 card and a current one, the RTX 5050
+# wins.
 #
-#   workstation (RTX 3070 + RTX 5050)  uv pip install torch --index-url .../cu128
-#   laptop      (RTX 3070 Laptop)      uv pip install torch --index-url .../cu128
-#   claude-machine (GTX 1080 Ti)       uv pip install torch --index-url .../cu121
+#   uv pip install "torch==2.9.1" --index-url https://download.pytorch.org/whl/cu128
+#
+# Verify with torch.cuda.get_arch_list() against the device's compute
+# capability. A mismatch fails at kernel launch, not at import, so it can sit
+# unnoticed.
 #
 # See CLAUDE.md §4.2 for what a GPU is and is not worth here: fp32 is ~44x the
 # CPU, fp64 is ~1.1x and therefore pointless on every card we own.

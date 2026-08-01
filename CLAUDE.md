@@ -128,9 +128,17 @@ not detected for hours, and then only by an audit.
 
 | machine | role | rule |
 |---|---|---|
-| **laptop** | **MASTER** | Only machine that commits, pushes, and holds canonical `results/`. |
-| `workstation` (ssh) | compute | i9, 62 GB. Git **clone**. RTX 3070 (sm_86) + RTX 5050 (sm_120), both usable on torch 2.9.1+cu128. |
-| `claude-machine` (ssh) | compute | i5, 31 GB. Git **clone**. GTX 1080 Ti is sm_61 — dropped by torch 2.9; needs cu121 if GPU work is ever wanted there. |
+| **laptop** | **MASTER** | Only machine that commits, pushes, and holds canonical `results/`. torch 2.9.1+cu128, RTX 3070 Laptop (sm_86). |
+| **`workstation`** (ssh) | **THE compute node** | i9-9900, 62 GB, RTX 3070 (sm_86) + RTX 5050 (sm_120), both live on torch 2.9.1+cu128. Git **clone**. All computation for this project runs here. |
+| `claude-machine` (ssh) | **not used for this project** | i5, 31 GB, GTX 1080 Ti (sm_61). Retained but out of scope — see below. |
+
+**Why claude-machine is out of scope.** Its GTX 1080 Ti is Pascal, `sm_61`, dropped
+by torch 2.9. Keeping it would force the whole project onto torch 2.5.1+cu121,
+which cannot see the workstation's RTX 5050 at all. Given a choice between one
+2017 card and a current one, the RTX 5050 wins, so the project standardises on
+torch 2.9.1+cu128 and computes solely on the workstation. Splitting work across
+hosts is also what produced the results-pollution failures; a single compute node
+removes that class of error rather than guarding against it.
 
 **Code moves by `git pull`, never by rsync.** A compute node that is an rsync
 target has no version identity — the workstation had no `.git` at all, so
@@ -189,13 +197,16 @@ The old warning still applies in spirit and is worth keeping in mind: **do not
 invent GPU work to justify the hardware.** If a step is fast enough on CPU, leave
 it there.
 
-**torch is per-machine, never a repo-wide pin.** No single build spans our
-hardware: 2.9.1+cu128 covers sm_70–sm_120 (both workstation cards) and drops the
-1080 Ti at sm_61; 2.5.1+cu121 covers sm_50–sm_90 and cannot see the RTX 5050.
-Pinning one silently disables a GPU somewhere, which is what happened — cu121
-was installed by hand, chosen from memory rather than from the hardware, and
-left the RTX 5050 dead for a day. Install per host and verify with
-`torch.cuda.get_arch_list()` against the device's compute capability.
+**torch: 2.9.1+cu128, on the laptop and the workstation.** One build, because
+the project no longer computes on the 1080 Ti. cu128 spans sm_70–sm_120 and
+covers every card in scope (both RTX 3070s at sm_86, the RTX 5050 at sm_120).
+
+It stays out of `requirements.txt` regardless: it is optional to the pipeline,
+and the correct index depends on the hardware. After installing, always verify
+with `torch.cuda.get_arch_list()` against the device's compute capability rather
+than assuming — a mismatch fails at kernel launch with "no kernel image is
+available for execution", not at import, so it can sit unnoticed. That is how
+the RTX 5050 stayed dead for a day behind a hand-typed `cu121`.
 
 Measured on the workstation, torch 2.9.1+cu128:
 

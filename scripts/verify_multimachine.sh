@@ -14,7 +14,12 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-HOSTS=(workstation claude-machine)
+# The workstation is the only compute node for this project. claude-machine is
+# retained but out of scope: its GTX 1080 Ti (sm_61) is dropped by torch 2.9,
+# and keeping it would force the whole project onto an older build that cannot
+# see the workstation's RTX 5050. A single compute node also removes the
+# split-host results pollution that caused the worst failures here.
+HOSTS=(workstation)
 PASS=0; FAIL=0
 ok  () { echo "  PASS  $1"; PASS=$((PASS+1)); }
 bad () { echo "  FAIL  $1"; FAIL=$((FAIL+1)); }
