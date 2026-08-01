@@ -26,7 +26,7 @@ out.
 
 The conjecture nonetheless fails, and we locate where. Across 15,840 path models, the exposure→mediator path is supported in 88% of pipelines and the
 mediator→outcome path in **0%**. Every mediator→outcome estimate falls below this
-design's detectability floor, so we report a bound rather than an absence: a large
+design's detectability floor, so we report a bound, not an absence: a large
 effect (|ρ| ≳ 0.33) is excluded, a moderate one is not. Independently, an ex vivo
 macaque vascular density map is unrelated to discordance (|ρ| ≤ 0.09, all
 *p* > 0.6), though its cross-species registration is weakest in
