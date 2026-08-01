@@ -85,7 +85,15 @@ DERIVATIVE_PATTERNS: dict[str, str | None] = {
     "control_cmro2": "derivatives/sub-*/qmri/sub-*_task-control_space-MNI152_*cmro2.nii.gz",
     # Dropout proxies (Phase 0b).
     "snr_mask": "derivatives/task-all_space-MNI152_res-2_SNR_YEO_group_mask.nii.gz",
+    # The first three links of the mqBOLD chain, and the ones where B0
+    # inhomogeneity actually enters: T2* is the quantity dropout corrupts, and
+    # R2' = 1/T2* - 1/T2 is what mqBOLD converts into OEF. The extended Phase 0b
+    # gate exists to test the chain upstream of the final map, so leaving these
+    # unwired made it test only the half of the chain downstream of the confound.
+    # T2 carries no task label in this dataset -- it is acquired once per subject.
     "t2star": "derivatives/sub-*/qmri/sub-*_task-control_space-MNI152_T2Smap.nii.gz",
+    "t2": "derivatives/sub-*/qmri/sub-*_space-MNI152_T2map.nii.gz",
+    "r2prime": "derivatives/sub-*/qmri/sub-*_task-control_space-MNI152_R2prime.nii.gz",
     # NOT WIRED — requires the Phase 1 contrast-structure answer.
     "discordance_freq": None,
 }
@@ -112,7 +120,16 @@ VALID_RANGES: dict[str, tuple[float, float]] = {
     "cbf": (0.0, 500.0),  # mL/100g/min; note the /0.75 upscale below
     "cbv": (0.0, 20.0),  # %
     "cmro2": (0.0, 1000.0),  # umol/100g/min
+    # Order matters: _quantity_of() matches by prefix/suffix, so "t2star" must
+    # precede "t2" or every T2* map would resolve to the T2 bound.
     "t2star": (0.0, 200.0),  # ms
+    "t2": (0.0, 500.0),  # ms; grey matter ~80-110 at 3T
+    # R2' = 1/T2* - 1/T2, so noise alone can push it slightly negative where the
+    # two fits disagree. The lower bound is deliberately below zero: clipping at
+    # zero would discard real measurements in exactly the high-R2' sinus-adjacent
+    # voxels this gate is meant to detect, which is the mistake the OEF cap note
+    # above documents.
+    "r2prime": (-20.0, 200.0),  # 1/s
 }
 
 # The authors upscale CBF by 25% before any group aggregation
@@ -625,6 +642,13 @@ def load_subject_target_matrix(
         # it is pre-specified rather than a post-hoc addition.
         data, subs, paths = _stack_subjects(target, parcellation, masked)
 
+    elif target in ("t2star", "t2", "r2prime"):
+        # Upstream mqBOLD quantities, needed by the extended Phase 0b gate. They
+        # are not target maps in the protocol sense and no hypothesis is tested
+        # against them; they exist so the dropout gate can reach the links where
+        # field inhomogeneity enters, rather than only the final map.
+        data, subs, paths = _stack_subjects(target, parcellation, masked)
+
     elif target == "coupling_n":
         d_cbf, d_cmro2, common, paths = load_coupling_components(
             parcellation, masked=masked
@@ -639,8 +663,10 @@ def load_subject_target_matrix(
     else:
         raise NotImplementedError(
             f"target {target!r} is not wired. Available: 'baseline_oef', "
-            "'coupling_n'. 'discordance_freq' requires the Phase 1 "
-            "contrast-structure answer — see CLAUDE.md §13.5."
+            "'baseline_cbv', 'baseline_cbf', 'baseline_cmro2', 'coupling_n', "
+            "and the upstream mqBOLD quantities 't2star', 't2', 'r2prime'. "
+            "'discordance_freq' requires the Phase 1 contrast-structure "
+            "answer — see CLAUDE.md §13.5."
         )
 
     meta = TargetMeta(

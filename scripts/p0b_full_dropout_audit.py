@@ -61,36 +61,48 @@ logger = logging.getLogger("p0b_full_audit")
 GATE = 0.5  # §9
 
 
-def build_chain(cfg, parc: str) -> dict[str, np.ndarray]:
-    """Every quantity in the mqBOLD chain, from raw signal to final map."""
+def build_chain(cfg, parc: str) -> tuple[dict[str, np.ndarray], list[str]]:
+    """Every quantity in the mqBOLD chain, from raw signal to final map.
+
+    Returns the quantities that loaded **and** the names of those that did not.
+    A link that cannot be tested is not a link that passed, and an earlier
+    version only logged the difference at WARNING: ``1_t2star`` was silently
+    absent from a verdict that claimed to test the whole chain, which meant the
+    gate skipped precisely the quantity dropout corrupts most directly.
+    """
     out: dict[str, np.ndarray] = {}
+    missing: list[str] = []
 
     for name, key in (
-        ("1_t2star", "t2star"),
-        ("2_baseline_cbv", "baseline_cbv"),
-        ("3_baseline_oef", "baseline_oef"),
-        ("4_baseline_cbf", "baseline_cbf"),
-        ("5_baseline_cmro2", "baseline_cmro2"),
+        ("1_t2", "t2"),
+        ("2_t2star", "t2star"),
+        ("3_r2prime", "r2prime"),
+        ("4_baseline_cbv", "baseline_cbv"),
+        ("5_baseline_oef", "baseline_oef"),
+        ("6_baseline_cbf", "baseline_cbf"),
+        ("7_baseline_cmro2", "baseline_cmro2"),
     ):
         try:
             out[name], _ = load_target_map(cfg, key, parc, masked=True)
         except Exception as exc:
             logger.warning("%s unavailable: %s", name, exc)
+            missing.append(name)
 
     d_cbf, d_cmro2, _s, _p = load_coupling_components(parc, masked=True)
-    out["6_delta_cbf"] = np.nanmedian(d_cbf, axis=0)
-    out["7_delta_cmro2"] = np.nanmedian(d_cmro2, axis=0)
+    out["8_delta_cbf"] = np.nanmedian(d_cbf, axis=0)
+    out["9_delta_cmro2"] = np.nanmedian(d_cmro2, axis=0)
 
     modes = discordance_modes(d_cbf, d_cmro2)
-    out["8_discordance_extraction"] = modes.extraction
-    out["9_discordance_overshoot"] = modes.overshoot
+    out["10_discordance_extraction"] = modes.extraction
+    out["11_discordance_overshoot"] = modes.overshoot
     try:
-        out["10_coupling_angle"], _ = load_target_map(
+        out["12_coupling_angle"], _ = load_target_map(
             cfg, "coupling_n", parc, masked=True
         )
     except Exception as exc:
         logger.warning("coupling angle unavailable: %s", exc)
-    return out
+        missing.append("12_coupling_angle")
+    return out, missing
 
 
 def main() -> int:
@@ -105,8 +117,10 @@ def main() -> int:
     density = cfg.parcellation.primary.density
 
     dropout, _ = load_dropout_proxy(cfg, "snr_coverage", parc)
-    chain = build_chain(cfg, parc)
+    chain, missing = build_chain(cfg, parc)
     logger.info("testing %d links in the mqBOLD chain", len(chain))
+    if missing:
+        logger.error("%d chain link(s) could NOT be tested: %s", len(missing), missing)
 
     sidx = spin_indices(
         len(dropout),
@@ -143,7 +157,15 @@ def main() -> int:
     df = pd.DataFrame(rows).sort_values("abs_rho", ascending=False)
     df["p_fdr"] = fdr_bh(df.p_spin.to_numpy())
     breached = df[df.breaches_gate]
-    verdict = "FAIL" if len(breached) else "PASS"
+    # An untested link is not a passed link. Reporting PASS while a chain link
+    # was silently unavailable is the failure mode this script exists to
+    # prevent, one level up.
+    if len(breached):
+        verdict = "FAIL"
+    elif missing:
+        verdict = "INCOMPLETE"
+    else:
+        verdict = "PASS"
 
     out = Path("results")
     with manifest(f"p0b_full_dropout_audit_{parc}", cfg) as man:
@@ -152,6 +174,8 @@ def main() -> int:
             gate_threshold=GATE,
             verdict=verdict,
             n_links_tested=len(df),
+            n_links_untestable=len(missing),
+            untestable_links=missing,
             n_breaching=len(breached),
             breaching_links=breached.link.tolist(),
             max_abs_rho=float(df.abs_rho.max()),
@@ -175,6 +199,11 @@ def main() -> int:
             f"  {r.link:<28}{r.rho_vs_dropout:>+9.3f}{r.abs_rho:>8.3f}"
             f"{r.p_spin:>10.4f}{flag}"
         )
+    if missing:
+        print(
+            f"\n  {len(missing)} CHAIN LINK(S) COULD NOT BE TESTED: {', '.join(missing)}"
+        )
+        print("  These are not passing links; they are absent ones.")
     print(f"\n  VERDICT: {verdict}")
     if verdict == "FAIL":
         print(f"  {len(breached)} link(s) breach the gate: {', '.join(breached.link)}")
@@ -184,7 +213,11 @@ def main() -> int:
         print(f"  worst link: {df.link.iloc[0]} at |rho| = {df.abs_rho.iloc[0]:.3f}")
         print("  Dropout remains a mandatory covariate in every downstream model.")
     print(f"\n  -> results/p0b_full_dropout_audit_{parc}.csv\n{'=' * 74}")
-    return 0
+    # R9: gates are gates. This returned 0 unconditionally, so a breach printed
+    # "STOP and report" and the pipeline continued past it -- the two narrower
+    # Phase 0 gates both return 1, and regenerate_all.sh runs under `set -e`,
+    # so this was the only gate that could not actually stop anything.
+    return 0 if verdict == "PASS" else 1
 
 
 if __name__ == "__main__":
