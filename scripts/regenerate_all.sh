@@ -160,6 +160,12 @@ step "Gene-set profiles (app input)"                  $PY scripts/build_geneset_
 step "Figures"                                        $PY scripts/make_figures.py
 
 # Refuse to call it complete unless the provenance gate passes.
+# Reported, not gated. A regeneration should not fail because prose is stale --
+# but drift between results/ and the paper is this project's most persistent
+# defect, and the moment a number moves is the moment to notice.
+step "Paper numbers vs results/ (report only)" bash -c \
+  "$PY scripts/check_paper_numbers.py || echo '  ^^ paper/draft.md is STALE against these results'"
+
 step "Provenance audit (GATE)"                        $PY scripts/audit_provenance.py
 
 echo ""
