@@ -8,33 +8,32 @@ traceable to a named artifact; where one is not, it is marked `[TODO]`.
 
 ## Abstract
 
-Roughly 40% of voxels showing significant task-evoked blood-oxygen-level-dependent
-(BOLD) signal change exhibit oxygen metabolism moving in the opposite direction,
+Roughly 40% of voxels showing task-evoked blood-oxygen-level-dependent (BOLD)
+signal change exhibit oxygen metabolism moving in the opposite direction,
 concentrated in the default mode network (Epp et al., 2025). The mechanism is
-unknown. The most prominent conjecture — that association cortex has lower
-capillary density than primary sensory cortex, weakening or reversing the
-haemodynamic response — has never been tested against molecular vascular
-architecture.
+unknown. The leading conjecture — that association cortex has lower capillary
+density than primary sensory cortex, weakening or reversing the haemodynamic
+response — has never been tested against molecular vascular architecture.
 
-We tested it. Using post-mortem microarray from the Allen Human Brain Atlas
-(AHBA) across 120 defensible preprocessing pipelines, with spatial-autocorrelation
--preserving nulls and size- and stability-matched competitive nulls throughout, we
-find that **pericyte and mural-cell gene expression predicts baseline oxygen
-extraction fraction (OEF) robustly** (ρ = −0.39, consistent in sign across 100% of
-pipelines, spatially significant in 86%, competitive *p* = 0.0004), in the
-pre-registered direction, and that this association **strengthens** rather than
-weakens when the unimodal–transmodal cortical hierarchy is partialled out.
+Using post-mortem microarray from the Allen Human Brain Atlas across 120
+preprocessing pipelines, with spatial-autocorrelation-preserving and
+stability-matched competitive nulls throughout, we find that **pericyte and
+mural-cell gene expression predicts baseline oxygen extraction fraction (OEF)**
+(ρ = −0.39, sign-consistent across 100% of pipelines, spatially significant in
+86%, competitive *p* = 0.0004), in the pre-registered direction. The association
+**strengthens** when the unimodal–transmodal cortical hierarchy is partialled
+out.
 
-The conjecture nonetheless fails, and we can say where. In a parcel-level path
-model (15,840 fitted models), the exposure→mediator path is supported in 88% of
-pipelines while the mediator→outcome path is supported in **0%**; no mediation is
-supported anywhere. Independently, an ex vivo macaque cortical vascular density
-map — a direct measurement rather than a molecular proxy — shows no relationship
-to discordance in any form (|ρ| ≤ 0.09, all *p* > 0.6).
+The conjecture nonetheless fails, and we locate where. Across 15,840 parcel-level
+path models, the exposure→mediator path is supported in 88% of pipelines and the
+mediator→outcome path in **0%**; no mediation is supported. Independently, an ex
+vivo macaque cortical vascular density map — a measurement rather than a
+molecular proxy — is unrelated to discordance in any parameterisation
+(|ρ| ≤ 0.09, all *p* > 0.6).
 
-The molecular half of the capillary-density conjecture holds. The vascular half
-does not. We report this as a structured negative result, together with the
-positive controls that make it interpretable and the one control we fail.
+The molecular half of the capillary-density conjecture holds; the vascular half
+does not. We report a structured negative result with the positive controls that
+make it interpretable and the one control we fail.
 
 ---
 
@@ -43,7 +42,7 @@ positive controls that make it interpretable and the one control we fail.
 BOLD contrast is sensitive to deoxyhaemoglobin, not to neural activity, and to
 first order `sign(ΔBOLD) ≈ sign(ΔCBF − ΔCMRO₂)`, where CBF is cerebral blood flow
 and CMRO₂ the cerebral metabolic rate of oxygen. The signal therefore reports the
-*mismatch* between flow and oxygen consumption. When flow overshoots demand — the
+*mismatch* between flow and oxygen consumption (Buxton, 2009). When flow overshoots demand — the
 normal case, coupling ratio *n* = %ΔCBF / %ΔCMRO₂ ≈ 2–4 — BOLD rises with
 metabolism. When *n* < 1, it does not.
 
@@ -79,13 +78,14 @@ Imaging transcriptomics has three well-documented failure modes, and the design
 below exists to neutralise each.
 
 1. **Spatial autocorrelation.** Two arbitrary smooth brain maps correlate at
-   r ≈ 0.4 by chance. Naive parametric *p*-values are meaningless.
-2. **Pipeline dependence.** Markello et al. (2021, *eLife* 10:e72129) showed AHBA
+   r ≈ 0.4 by chance. Naive parametric *p*-values are meaningless
+   (Alexander-Bloch et al., 2018; Burt et al., 2020).
+2. **Pipeline dependence.** Markello et al. (2021) showed AHBA
    processing choices can shift imaging–expression correlations by as much as
    ρ ≥ 1.0 — a finding can be reversed by a defensible parameter change.
 3. **The hierarchy confound.** Association cortex differs from sensory cortex on
-   nearly everything. Any map varying along that axis correlates with any gene set
-   varying along it.
+   nearly everything (Margulies et al., 2016). Any map varying along that axis
+   correlates with any gene set varying along it.
 
 Accordingly: every spatial correlation carries a spatial-autocorrelation-preserving
 null; every gene-set result additionally carries a competitive null matched on set
@@ -102,17 +102,18 @@ analysis partials the cortical hierarchy.
 | Source | Content | Use |
 |---|---|---|
 | `ds004873` (OpenNeuro) | Epp et al. mqBOLD derivatives, 40 subjects | Target maps |
-| AHBA | 6 post-mortem donors (5 usable; donor 15496 is unavailable upstream, HTTP 404) | Expression |
-| `neuromaps` | Margulies principal gradient, T1w/T2w myelin, Raichle CBF/CMRO₂/CMRGlu, evolutionary expansion | Covariates and comparison maps |
-| MSigDB | HALLMARK and GO gene sets | Frozen hypothesis-driven sets |
+| AHBA (Hawrylycz et al., 2012) | 6 post-mortem donors (5 usable; donor 15496 is unavailable upstream, HTTP 404) | Expression |
+| `neuromaps` (Markello et al., 2022) | Margulies principal gradient, T1w/T2w myelin, Raichle CBF/CMRO₂/CMRGlu, evolutionary expansion | Covariates and comparison maps |
+| MSigDB (Liberzon et al., 2015) | HALLMARK and GO gene sets | Frozen hypothesis-driven sets |
 | Macaque vascular atlas | Ex vivo cortical vascular density | Independent positive control `[TODO: full citation]` |
 
 ### 2.2 Parcellation and projection
 
-Primary analysis uses Schaefer-2018, 200 parcels, 7 networks, **left hemisphere
+Primary analysis uses the Schaefer parcellation (Schaefer et al., 2018), 200
+parcels, 7 networks (Yeo et al., 2011), **left hemisphere
 only** (100 parcels), in `fsaverage5` space. Left-hemisphere restriction is forced
 by AHBA: only 2 of 6 donors have right-hemisphere tissue. Sensitivity parcellations
-are Desikan–Killiany (34 LH) and Schaefer-400 (200 LH).
+are Desikan–Killiany (Desikan et al., 2006; 34 LH) and Schaefer-400 (200 LH).
 
 Volumetric MNI152 maps are projected to the surface exclusively through
 `neuromaps.transforms`; no coordinate transform is hand-rolled. This discards
@@ -136,13 +137,17 @@ measure is *less* reliable (split-half 0.491) than either component (0.579, 0.59
 
 ### 2.4 The expression multiverse
 
+Following Arnatkevičiūtė et al. (2019) and Markello et al. (2021), and adopting
+the multiverse framing of Steegen et al. (2016) — whose necessity in neuroimaging
+Botvinik-Nezer et al. (2020) demonstrated empirically — we run
 120 cells spanning `probe_selection` × `lr_mirror` × `missing` × `tolerance` ×
 `norm_matched` × stability threshold. Every reported effect is summarised as
 median, inter-quartile range, and percentage of cells with consistent sign.
 
 ### 2.5 Null models
 
-**Spatial** — Alexander-Bloch spherical rotation, 10,000 permutations, seed 42,
+**Spatial** — spherical rotation (Alexander-Bloch et al., 2018), 10,000
+permutations, seed 42,
 cached per target map. Where a partial correlation is computed, surrogates are
 residualised identically to the observed data.
 
@@ -151,7 +156,7 @@ distribution.
 
 Both are required for any gene-set claim. Reported for every effect: point
 estimate, spatial-null *p*, competitive-null *p*, Benjamini–Hochberg false
-discovery rate (FDR) across the family, and the multiverse distribution.
+discovery rate (FDR; Benjamini & Hochberg, 1995) across the family, and the multiverse distribution.
 
 ---
 
@@ -363,7 +368,12 @@ unusual robustness for this field — every one of 120 defensible pipelines agre
 sign, 86% reach spatial significance, the competitive null is passed decisively,
 and the effect strengthens under hierarchy control. This is a real feature of
 cortical organisation, and it is the kind of molecular–physiological coupling the
-transcriptomic approach was supposed to find.
+transcriptomic approach was supposed to find (Fornito et al., 2019).
+
+Pericytes are contractile and regulate capillary flow directly (Hall et al., 2014;
+Attwell et al., 2010; Iadecola, 2017), so a relationship between mural-cell gene
+expression and steady-state oxygen extraction is mechanistically unsurprising. The
+surprise is where it stops.
 
 It does not reach discordance. The mediation model fails at the mediator→outcome
 path in 100% of pipelines, and an independent ex vivo measurement of vascular
@@ -382,6 +392,10 @@ argued more carefully, ideally with a simulation showing the two can dissociate.
 ### 4.1 What would change our minds
 
 - A vascular density measurement in human tissue, matched to these subjects.
+- Cell-type deconvolution against a published single-cell reference
+  (Seidlitz et al., 2020) rather than curated marker panels alone.
+- Comparison against the time-averaged control energy map of Ceballos et al.
+  (2025), which indexes a different notion of regional metabolic demand.
 - Discordance measured with a method that does not derive OEF from T2\*, breaking
   the dependence identified in §3.7.
 - Subject-level rather than parcel-level mediation, which the released data cannot
@@ -453,3 +467,36 @@ the primary effect, the mediation path structure, and every gate.
 - Author list, affiliations, funding, competing interests.
 - Decide target venue; this reads as *Imaging Neuroscience* or *NeuroImage* rather
   than a high-impact venue, which is appropriate for a structured negative result.
+
+---
+
+## References
+
+Resolved against Crossref by `scripts/verify_references.py`; each entry is a
+DOI whose returned title is asserted to match, so a misremembered citation
+fails loudly rather than being formatted in. Schaefer et al. is dated 2017 by
+Crossref (advance online) and 2018 by its issue; we cite the issue year.
+
+- Alexander-Bloch AF et al. (2018). On testing for spatial correspondence between maps of human brain structure and function. *NeuroImage*, 178, 540-551. https://doi.org/10.1016/j.neuroimage.2018.05.070
+- Arnatkevic̆iūtė A, Fulcher BD & Fornito A (2019). A practical guide to linking brain-wide gene expression and neuroimaging data. *NeuroImage*, 189, 353-367. https://doi.org/10.1016/j.neuroimage.2019.01.011
+- Attwell D et al. (2010). Glial and neuronal control of brain blood flow. *Nature*, 468, 232-243. https://doi.org/10.1038/nature09613
+- Benjamini Y & Hochberg Y (1995). Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing. *Journal of the Royal Statistical Society Series B: Statistical Methodology*, 57, 289-300. https://doi.org/10.1111/j.2517-6161.1995.tb02031.x
+- Botvinik-Nezer R et al. (2020). Variability in the analysis of a single neuroimaging dataset by many teams. *Nature*, 582, 84-88. https://doi.org/10.1038/s41586-020-2314-9
+- Burt JB et al. (2020). Generative modeling of brain maps with spatial autocorrelation. *NeuroImage*, 220, 117038. https://doi.org/10.1016/j.neuroimage.2020.117038
+- Buxton RB (2009). Introduction to Functional Magnetic Resonance Imaging. https://doi.org/10.1017/cbo9780511605505
+- Ceballos EG et al. (2025). The control costs of human brain dynamics. *Network Neuroscience*, 9, 77-99. https://doi.org/10.1162/netn_a_00425
+- Desikan RS et al. (2006). An automated labeling system for subdividing the human cerebral cortex on MRI scans into gyral based regions of interest. *NeuroImage*, 31, 968-980. https://doi.org/10.1016/j.neuroimage.2006.01.021
+- Epp SM et al. (2025). BOLD signal changes can oppose oxygen metabolism across the human cortex. *Nature Neuroscience*, 29, 1225-1236. https://doi.org/10.1038/s41593-025-02132-9
+- Fornito A, Arnatkevičiūtė A & Fulcher BD (2019). Bridging the Gap between Connectome and Transcriptome. *Trends in Cognitive Sciences*, 23, 34-50. https://doi.org/10.1016/j.tics.2018.10.005
+- Hall CN et al. (2014). Capillary pericytes regulate cerebral blood flow in health and disease. *Nature*, 508, 55-60. https://doi.org/10.1038/nature13165
+- Hawrylycz MJ et al. (2012). An anatomically comprehensive atlas of the adult human brain transcriptome. *Nature*, 489, 391-399. https://doi.org/10.1038/nature11405
+- Iadecola C (2017). The Neurovascular Unit Coming of Age: A Journey through Neurovascular Coupling in Health and Disease. *Neuron*, 96, 17-42. https://doi.org/10.1016/j.neuron.2017.07.030
+- Liberzon A et al. (2015). The Molecular Signatures Database Hallmark Gene Set Collection. *Cell Systems*, 1, 417-425. https://doi.org/10.1016/j.cels.2015.12.004
+- Margulies DS et al. (2016). Situating the default-mode network along a principal gradient of macroscale cortical organization. *Proceedings of the National Academy of Sciences*, 113, 12574-12579. https://doi.org/10.1073/pnas.1608282113
+- Markello RD et al. (2021). Standardizing workflows in imaging transcriptomics with the abagen toolbox. *eLife*, 10. https://doi.org/10.7554/elife.72129
+- Markello RD et al. (2022). neuromaps: structural and functional interpretation of brain maps. *Nature Methods*, 19, 1472-1479. https://doi.org/10.1038/s41592-022-01625-w
+- Schaefer A et al. (2017). Local-Global Parcellation of the Human Cerebral Cortex from Intrinsic Functional Connectivity MRI. *Cerebral Cortex*, 28, 3095-3114. https://doi.org/10.1093/cercor/bhx179
+- Seidlitz J et al. (2020). Transcriptomic and cellular decoding of regional brain vulnerability to neurogenetic disorders. *Nature Communications*, 11. https://doi.org/10.1038/s41467-020-17051-5
+- Steegen S et al. (2016). Increasing Transparency Through a Multiverse Analysis. *Perspectives on Psychological Science*, 11, 702-712. https://doi.org/10.1177/1745691616658637
+- Thomas Yeo BT et al. (2011). The organization of the human cerebral cortex estimated by intrinsic functional connectivity. *Journal of Neurophysiology*, 106, 1125-1165. https://doi.org/10.1152/jn.00338.2011
+- Vaishnavi SN et al. (2010). Regional aerobic glycolysis in the human brain. *Proceedings of the National Academy of Sciences*, 107, 17757-17762. https://doi.org/10.1073/pnas.1010459107
