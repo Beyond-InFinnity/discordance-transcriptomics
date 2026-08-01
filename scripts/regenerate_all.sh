@@ -95,7 +95,15 @@ step "x1 — macaque vascular control"                  $PY scripts/x1_macaque_v
 # --- the analysis proper --------------------------------------------------
 step "Phase 4  — frozen gene sets, both nulls"        $PY scripts/p4_genesets.py --n-draws $NDRAWS $P4_CELLS
 step "Phase 4b — data-driven arm"                     $PY scripts/p4b_datadriven.py --max-cells $CELLS --n-draws $NDRAWS
-step "Phase 5  — hierarchy control (DECISIVE)"        $PY scripts/p5_hierarchy.py --max-cells $CELLS
+step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
+# Disclosed sensitivity analysis, run every time rather than on request. The
+# pre-registered specification removes only the FIRST connectivity gradient, but
+# our maps track gradients 2 and 3 more strongly — the coupling angle sits at
+# +0.04 against gradient 1 and +0.46/+0.49 against 2 and 3. Reporting only the
+# weaker control would overstate what survives; reporting only the stronger one
+# would abandon the pre-registration. Both, always, so neither can be chosen
+# after the fact.
+step "Phase 5b — hierarchy, extended (sensitivity)"   $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates extended
 step "Phase 6  — mediation"                           $PY scripts/p6_mediation.py --n-boot $NBOOT $P4_CELLS
 
 # --- released artifacts ---------------------------------------------------
