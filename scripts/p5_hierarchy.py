@@ -264,43 +264,83 @@ def main() -> int:
     # --- positive controls -------------------------------------------------
     # A hierarchy result that is null across the board is only interpretable if
     # the pipeline can be shown to detect relationships that must exist. Two
-    # checks: our own quantities against each other (the mqBOLD identity
-    # OEF = CMRO2 / (CBF x CaO2) forces specific signs), and our maps against
-    # the Raichle PET maps of the same physiology.
+    # checks: quantities against each other (the mqBOLD identity
+    # OEF = CMRO2 / (CBF x CaO2) forces specific signs), and against the
+    # Raichle PET maps of the same physiology.
+    #
+    # Run on BOTH map sources, labelled. This block previously bound the
+    # authors' published group maps to a variable named `ours`, described them
+    # in the comment as "our maps", and wrote them to a released CSV with no
+    # source column -- while x2_cmro2_audit reported the same nominal control
+    # from OUR reconstruction. The two disagreed (+0.090 vs -0.138 against the
+    # PET reference) for a legitimate reason that nothing recorded, and the
+    # published-map version cannot speak to whether OUR pipeline is sound.
+    #
+    # Having both is also what turns a failing control into a finding: the
+    # authors' own published CMRO2 misses the PET reference too, from entirely
+    # separate processing, which locates the disagreement in mqBOLD-vs-PET
+    # rather than in anything we did.
     from scipy.stats import spearmanr
 
     from src.data.targets import load_authors_group_map
 
-    ours = {
-        q: load_authors_group_map(parc, q, density)[0] for q in ("oef", "cbf", "cmro2")
-    }
+    sources: dict[str, dict[str, np.ndarray]] = {}
+    # The authors' GMR2pCBVmasked group maps -- authoritative for group-level
+    # baselines (§12.4), because Phase 1 established their per-subject masking
+    # is not reproducible from the public data.
+    try:
+        sources["authors_published"] = {
+            q: load_authors_group_map(parc, q, density)[0]
+            for q in ("oef", "cbf", "cmro2")
+        }
+    except Exception as exc:  # pragma: no cover - depends on local data
+        logger.warning("authors' group maps unavailable: %s", exc)
+    # Our own per-subject maps, median across subjects, our masking. This is the
+    # arm that actually tests our processing.
+    try:
+        sources["our_reconstruction"] = {
+            q: load_target_map(cfg, f"baseline_{q}", parc, masked=True)[0]
+            for q in ("oef", "cbf", "cmro2")
+        }
+    except Exception as exc:  # pragma: no cover - depends on local data
+        logger.warning("our reconstruction unavailable: %s", exc)
 
     def _rho(a: np.ndarray, b: np.ndarray) -> tuple[float, int]:
         m = np.isfinite(a) & np.isfinite(b)
         return float(spearmanr(a[m], b[m]).statistic), int(m.sum())
 
     controls = []
-    for a, b, expect in [
-        ("oef", "cmro2", "positive (OEF rises with CMRO2 at fixed CBF)"),
-        ("oef", "cbf", "negative (OEF falls as CBF rises at fixed CMRO2)"),
-        ("cbf", "cmro2", "positive (flow-metabolism coupling)"),
-    ]:
-        r, n = _rho(ours[a], ours[b])
-        controls.append(
-            {"kind": "internal", "a": a, "b": b, "rho": r, "n": n, "expected": expect}
-        )
-    for q, ref_name in [("cbf", "raichle_cbf"), ("cmro2", "raichle_cmro2")]:
-        r, n = _rho(ours[q], refs[ref_name])
-        controls.append(
-            {
-                "kind": "cross_modality",
-                "a": q,
-                "b": ref_name,
-                "rho": r,
-                "n": n,
-                "expected": "positive (same physiology, different method)",
-            }
-        )
+    for source, maps in sources.items():
+        for a, b, expect in [
+            ("oef", "cmro2", "positive (OEF rises with CMRO2 at fixed CBF)"),
+            ("oef", "cbf", "negative (OEF falls as CBF rises at fixed CMRO2)"),
+            ("cbf", "cmro2", "positive (flow-metabolism coupling)"),
+        ]:
+            r, n = _rho(maps[a], maps[b])
+            controls.append(
+                {
+                    "source": source,
+                    "kind": "internal",
+                    "a": f"{source}:{a}",
+                    "b": f"{source}:{b}",
+                    "rho": r,
+                    "n": n,
+                    "expected": expect,
+                }
+            )
+        for q, ref_name in [("cbf", "raichle_cbf"), ("cmro2", "raichle_cmro2")]:
+            r, n = _rho(maps[q], refs[ref_name])
+            controls.append(
+                {
+                    "source": source,
+                    "kind": "cross_modality",
+                    "a": f"{source}:{q}",
+                    "b": ref_name,
+                    "rho": r,
+                    "n": n,
+                    "expected": "positive (same physiology, different method)",
+                }
+            )
     controls_df = pd.DataFrame(controls)
 
     df = pd.DataFrame(rows)
