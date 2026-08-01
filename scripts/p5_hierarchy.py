@@ -45,6 +45,7 @@ from src.data.parcellate import gifti_for_nulls
 from src.data.targets import load_dropout_proxy, load_target_map
 from src.stats.hierarchy import (
     HIERARCHY_COVARIATES,
+    HIERARCHY_COVARIATES_EXTENDED,
     REFERENCE_MAPS,
     fetch_reference_parcels,
     partial_corr_with_null,
@@ -81,11 +82,22 @@ def main() -> int:
     density = cfg.parcellation.primary.density
 
     logger.info("fetching %d reference maps @ %s", len(REFERENCE_MAPS), parc)
-    refs = {k: fetch_reference_parcels(k, parc, density) for k in REFERENCE_MAPS}
+    want = (
+        set(REFERENCE_MAPS)
+        if args.covariates == "extended"
+        else (set(REFERENCE_MAPS) - {"margulies_gradient2", "margulies_gradient3"})
+    )
+    refs = {k: fetch_reference_parcels(k, parc, density) for k in sorted(want)}
 
     # Dropout proxy is a mandatory covariate everywhere downstream (Phase 0b).
     dropout, _ = load_dropout_proxy(cfg, "snr_coverage", parc)
-    cov_names = [*HIERARCHY_COVARIATES, "dropout_snr_coverage"]
+    hier = (
+        HIERARCHY_COVARIATES
+        if args.covariates == "principal"
+        else HIERARCHY_COVARIATES_EXTENDED
+    )
+    cov_names = [*hier, "dropout_snr_coverage"]
+    logger.info("hierarchy covariates (%s): %s", args.covariates, ", ".join(hier))
 
     # Frozen gene sets and the multiverse cells the decisive step runs over.
     gsets = load_genesets() if args.max_cells else {}
@@ -151,9 +163,9 @@ def main() -> int:
             )
 
         # --- step 2: partial out hierarchy + dropout -----------------------
-        covars = np.column_stack([refs[c] for c in HIERARCHY_COVARIATES] + [dropout])
+        covars = np.column_stack([refs[c] for c in hier] + [dropout])
         for ref_name, ref in refs.items():
-            if ref_name in HIERARCHY_COVARIATES:
+            if ref_name in hier:
                 continue  # partialling a covariate against itself is vacuous
             pr = partial_corr_with_null(
                 target,
@@ -267,13 +279,13 @@ def main() -> int:
     for _, idx in df.groupby(["target", "step"]).groups.items():
         df.loc[idx, "p_fdr"] = fdr_bh(df.loc[idx, "p_spin"].to_numpy())
 
+    tag = "" if args.covariates == "principal" else "_extended"
     out_dir = cfg.path("results") if "results" in cfg.paths else Path("results")
     out_dir.mkdir(parents=True, exist_ok=True)
-    csv = out_dir / f"p5_hierarchy_{parc}.csv"
-
-    with manifest(f"p5_hierarchy_{parc}", cfg) as man:
+    csv = out_dir / f"p5_hierarchy_{parc}{tag}.csv"
+    with manifest(f"p5_hierarchy_{parc}{tag}", cfg) as man:
         df.to_csv(csv, index=False)
-        controls_df.to_csv(out_dir / f"p5_positive_controls_{parc}.csv", index=False)
+        controls_df.to_csv(out_dir / f"p5_positive_controls_{parc}{tag}.csv", index=False)
         grad = df[(df.step == "raw") & (df.reference == "margulies_gradient1")].set_index(
             "target"
         )["rho"]

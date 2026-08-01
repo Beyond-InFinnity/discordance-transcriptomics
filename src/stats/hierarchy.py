@@ -54,7 +54,44 @@ REFERENCE_MAPS: dict[str, tuple[str, str]] = {
 }
 
 # Covariates entered in the hierarchical step, per config.covariates.hierarchy.
+# The pre-registered set. CLAUDE.md §9 says "Margulies principal functional
+# gradient + T1w/T2w myelin (+ dropout proxy)" — singular, the first gradient.
+# This is the confirmatory specification and does not change.
 HIERARCHY_COVARIATES = ("margulies_gradient1", "t1w_t2w_myelin")
+
+# A disclosed SENSITIVITY specification, added 2026-07-31, rationale recorded
+# before any expanded result was computed.
+#
+# The protocol assumed the first connectivity gradient is the hierarchy
+# confound. For these particular maps it is not the main one. Measured against
+# each of the first five gradients:
+#
+#                      grad1   grad2   grad3   grad4   grad5
+#   baseline OEF       +0.15   +0.34   -0.27   -0.02   -0.05
+#   coupling angle     +0.04   +0.46   +0.49   -0.20   -0.03
+#   extraction mode    -0.40   -0.31   -0.11   +0.25   -0.21
+#
+# The coupling angle is essentially orthogonal to gradient 1 (+0.04) — the
+# number repeatedly cited as evidence that the hierarchy confound does not apply
+# here — while correlating at +0.46 and +0.49 with gradients 2 and 3. Those are
+# not noise dimensions: gradient 2 separates visual from somatomotor/auditory
+# systems, gradient 3 task-positive from task-negative networks.
+#
+# Both directions carry risk. Under-controlling risks reporting a hierarchy
+# artifact as molecular. Over-controlling risks partialling away real signal,
+# since gradients 2 and 3 are themselves partly metabolic and vascular in
+# origin. Neither is obviously right, so BOTH are run and BOTH are reported;
+# the difference between them is itself the result.
+#
+# This was found by asking how the hierarchy is operationalised, not by
+# disliking an outcome — no expanded result had been computed when the decision
+# was made. The pre-registered specification above remains primary.
+HIERARCHY_COVARIATES_EXTENDED = (
+    "margulies_gradient1",
+    "margulies_gradient2",
+    "margulies_gradient3",
+    "t1w_t2w_myelin",
+)
 
 
 @dataclass(frozen=True)
