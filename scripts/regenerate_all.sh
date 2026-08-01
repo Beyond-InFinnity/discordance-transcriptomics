@@ -138,6 +138,11 @@ step "x2 — CMRO2 positive-control audit"              $PY scripts/x2_cmro2_aud
 
 # --- the analysis proper --------------------------------------------------
 step "Phase 4  — frozen gene sets, both nulls"        $PY scripts/p4_genesets.py --n-draws $NDRAWS $P4_CELLS
+# Which gene-set x outcome tests the design can resolve at all. Reads Phase 0c's
+# reliabilities and Phase 4's effects, so it must follow both. This is the
+# manuscript's central table: 3 of 33 tests are resolvable, and they are the
+# three that return associations passing both nulls.
+step "Phase 0d — resolvable tests (manuscript Table 1)" $PY scripts/p0d_resolvable_tests.py
 step "Phase 4b — data-driven arm"                     $PY scripts/p4b_datadriven.py --max-cells $CELLS --n-draws $NDRAWS
 step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
 # Disclosed sensitivity analysis, run every time rather than on request. The

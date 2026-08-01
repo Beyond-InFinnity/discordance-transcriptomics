@@ -73,6 +73,44 @@ def _macaque(target: str) -> float:
 
 # (label, computed value, format spec). The format is how the number must appear
 # in the draft; a claim whose formatted value is absent is a drift failure.
+
+
+def _resolvability() -> dict:
+    """Recompute §3.2: which gene-set x outcome tests the design can resolve.
+
+    The paper's central table. Joins gene-set panel reliability and map
+    reliability into an attenuation ceiling, divides the observed effect by it to
+    get the implied true effect, and compares that against the detectability
+    floor. Recomputed here rather than trusted, because it is the claim the
+    manuscript's structure now rests on.
+    """
+    import math
+
+    fl = _csv("p0c_detectability_floor.csv")
+    s4 = _csv("p4_genesets_summary.csv")
+    label = {
+        "discordance_extraction": "discordance (extraction)",
+        "discordance_overshoot": "discordance (overshoot)",
+        "baseline_oef": "baseline OEF",
+    }
+    n_total = n_resolvable = 0
+    per_outcome: dict[str, list[int]] = {k: [0, 0] for k in label}
+    for _, r in s4.iterrows():
+        if r.target not in label:
+            continue
+        m = fl[(fl.gene_set == r.gene_set) & (fl.brain_map == label[r.target])]
+        if not len(m):
+            continue
+        ceil = float(m.attenuation_ceiling.iloc[0])
+        floor = float(m.detectable_true_rho.iloc[0])
+        n_total += 1
+        per_outcome[r.target][1] += 1
+        if ceil > 0 and not math.isnan(ceil) and abs(r.rho_median) / ceil >= floor:
+            n_resolvable += 1
+            per_outcome[r.target][0] += 1
+    return {"total": n_total, "resolvable": n_resolvable, "per_outcome": per_outcome}
+
+
 def build_claims() -> list[tuple[str, float, str]]:
     p6 = _man("p6_mediation")
     p6s = _csv("p6_mediation_summary.csv")
@@ -88,7 +126,38 @@ def build_claims() -> list[tuple[str, float, str]]:
         (p4full.gene_set == "pericyte_mural") & (p4full.target == "baseline_oef")
     ]
 
+    res = _resolvability()
+    rel = _csv("p0c_geneset_reliability.csv").set_index("gene_set")
+
     return [
+        # --- what the design can resolve (§3.2, the paper's central table) ---
+        ("total gene-set x outcome tests", float(res["total"]), "33"),
+        ("resolvable tests", float(res["resolvable"]), "three"),
+        (
+            "resolvable vs baseline OEF",
+            float(res["per_outcome"]["baseline_oef"][0]),
+            "2 / 11",
+        ),
+        (
+            "resolvable vs overshoot",
+            float(res["per_outcome"]["discordance_overshoot"][0]),
+            "1 / 11",
+        ),
+        (
+            "resolvable vs extraction",
+            float(res["per_outcome"]["discordance_extraction"][0]),
+            "0 / 11",
+        ),
+        (
+            "GOBP set has negative reliability",
+            float(rel.loc["GOBP_BLOOD_VESSEL_MORPHOGENESIS", "reliability_panel"]),
+            "-0.011",
+        ),
+        (
+            "pericyte panel reliability",
+            float(rel.loc["pericyte_mural", "reliability_panel"]),
+            "0.557",
+        ),
         # --- gates ---------------------------------------------------------
         ("coupling map reliability", _reliability("coupling angle"), "0.711"),
         ("baseline OEF reliability", _reliability("baseline OEF"), "0.978"),
