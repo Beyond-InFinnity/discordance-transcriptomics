@@ -219,22 +219,23 @@ def figure1(out: Path) -> list[str]:
             label=OUTCOME_LABEL[oc],
             zorder=4,
         )
-    # Leader lines: the three resolvable points sit close together near the
-    # diagonal, so floating labels cannot be matched to them unambiguously.
-    leaders = {
-        "pericyte_mural": (0.10, 0.72),
-        "HALLMARK_ANGIOGENESIS": (0.10, 0.62),
-        "astrocyte": (0.62, 0.80),
-    }
-    for _, r in d[d.resolvable].iterrows():
-        tx, ty = leaders[r.gene_set]
+    # Leader lines. The resolvable points sit close together near the diagonal,
+    # so floating labels cannot be matched to them unambiguously.
+    #
+    # Anchor positions are derived, not hard-coded. A first version kept a dict
+    # keyed by the three gene sets resolvable in the full run; under any other
+    # settings a different set qualifies and the figure died on a KeyError. A
+    # figure must not encode its own results.
+    res = d[d.resolvable].sort_values("floor").reset_index(drop=True)
+    for i, r in res.iterrows():
+        left = i % 2 == 0
         ax.annotate(
             r.gene_set.replace("HALLMARK_", "").replace("_", " ").lower(),
             xy=(r.floor, r.implied_true),
-            xytext=(tx, ty),
-            textcoords="data",
+            xytext=(-14 if left else 14, 16 if left else -18),
+            textcoords="offset points",
             fontsize=6.5,
-            ha="left",
+            ha="right" if left else "left",
             va="center",
             zorder=6,
             arrowprops=dict(
