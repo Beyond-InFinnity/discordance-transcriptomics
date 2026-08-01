@@ -15,28 +15,26 @@ unknown. The leading conjecture — that association cortex has lower capillary
 density than primary sensory cortex, weakening or reversing the haemodynamic
 response — has never been tested against molecular vascular architecture.
 
-Using post-mortem microarray from the Allen Human Brain Atlas across 120
-preprocessing pipelines, with spatial-autocorrelation-preserving and
-stability-matched competitive nulls throughout, we find that **pericyte and
+Using Allen Human Brain Atlas microarray across 120 preprocessing pipelines,
+with spatial-autocorrelation-preserving and stability-matched competitive nulls
+throughout, we find that **pericyte and
 mural-cell gene expression predicts baseline oxygen extraction fraction (OEF)**
 (ρ = −0.39, sign-consistent across 100% of pipelines, spatially significant in
 86%, competitive *p* = 0.0004), in the pre-registered direction. The association
 **strengthens** when the unimodal–transmodal cortical hierarchy is partialled
 out.
 
-The conjecture nonetheless fails, and we locate where. Across 15,840 parcel-level
-path models, the exposure→mediator path is supported in 88% of pipelines and the
+The conjecture nonetheless fails, and we locate where. Across 15,840 path models, the exposure→mediator path is supported in 88% of pipelines and the
 mediator→outcome path in **0%**. Every mediator→outcome estimate falls below this
 design's detectability floor, so we report a bound rather than an absence: a large
 effect (|ρ| ≳ 0.33) is excluded, a moderate one is not. Independently, an ex vivo
 macaque vascular density map is unrelated to discordance (|ρ| ≤ 0.09, all
-*p* > 0.6), though its cross-species registration is weakest in association
-cortex.
+*p* > 0.6), though its cross-species registration is weakest in
+association cortex.
 
 The molecular half of the capillary-density conjecture holds; the vascular half
-is bounded well below what the conjecture requires. We report a structured
-negative result with the positive controls that make it interpretable and the one
-control we fail.
+is bounded well below what the conjecture requires. We report a structured negative result with the
+positive controls that make it interpretable and the one control we fail.
 
 ---
 
