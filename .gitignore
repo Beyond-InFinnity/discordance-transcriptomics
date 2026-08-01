@@ -54,3 +54,5 @@ results/
 
 # Run logs are local scratch, never artifacts.
 *.log
+# ...as is the completion sentinel regenerate_all.sh drops.
+regen.done

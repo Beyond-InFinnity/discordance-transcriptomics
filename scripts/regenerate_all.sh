@@ -63,7 +63,26 @@ printf '%s\n' "$RUN_ID" > results/.run_id
 date -u +%Y-%m-%dT%H:%M:%SZ > results/.run_started
 echo "run id: $RUN_ID (results/ wiped; any pre-existing files discarded)"
 
+# The dirty-tree check at the top of this script runs ONCE, before computing.
+# That is not enough: a tree can be dirtied *during* a run, and the manifests
+# written afterwards record git_dirty=true while every earlier one records
+# false. The provenance audit catches it -- but only at the end, so the cost of
+# noticing is the whole run. It happened here: two scratch scripts copied into
+# the repo root mid-run left the last three artifacts dirty and forced a full
+# 3.7-hour regeneration.
+#
+# Re-checking before each step turns that into a few seconds. `git status` on
+# this repo takes ~30 ms against steps measured in minutes, so the check is free.
 step () {
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    echo ""
+    echo "FATAL: the working tree became dirty mid-run, before: $1"
+    git status --porcelain | sed 's/^/  /'
+    echo ""
+    echo "Every manifest written from here on would record git_dirty=true and"
+    echo "fail the provenance audit. Stopping now rather than at the end."
+    exit 1
+  fi
   echo ""
   echo "=============================================================="
   echo "  $1"

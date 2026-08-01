@@ -171,6 +171,11 @@ def main() -> int:
         if net is not None:
             net.to_csv(out / f"x2_cmro2_by_network_{parc}.csv", index=False)
         man.record(
+            outputs=[
+                str(out / f"x2_cmro2_ceiling_{parc}.csv"),
+                str(out / f"x2_cmro2_contamination_{parc}.csv"),
+            ]
+            + ([str(out / f"x2_cmro2_by_network_{parc}.csv")] if net is not None else []),
             observed_rho_vs_pet=rho_obs,
             reliability_ours=rel_ours,
             max_observable_if_pet_perfect=float(ceil_df.max_observable_rho.iloc[0]),
