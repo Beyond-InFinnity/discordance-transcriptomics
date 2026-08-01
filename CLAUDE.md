@@ -129,8 +129,8 @@ not detected for hours, and then only by an audit.
 | machine | role | rule |
 |---|---|---|
 | **laptop** | **MASTER** | Only machine that commits, pushes, and holds canonical `results/`. |
-| `workstation` (ssh) | compute | i9, 62 GB. Git **clone**. Two cards but only **one usable**: the RTX 3070 (8 GB). The RTX 5050 is Blackwell (sm_120) and the pinned PyTorch 2.5.1+cu121 supports only up to sm_90, so it is visible to `torch` and unusable. Effective GPU capacity is 8 GB, not 16. |
-| `claude-machine` (ssh) | compute | i5, 31 GB. Git **clone**. |
+| `workstation` (ssh) | compute | i9, 62 GB. Git **clone**. RTX 3070 (sm_86) + RTX 5050 (sm_120), both usable on torch 2.9.1+cu128. |
+| `claude-machine` (ssh) | compute | i5, 31 GB. Git **clone**. GTX 1080 Ti is sm_61 — dropped by torch 2.9; needs cu121 if GPU work is ever wanted there. |
 
 **Code moves by `git pull`, never by rsync.** A compute node that is an rsync
 target has no version identity — the workstation had no `.git` at all, so
@@ -188,6 +188,25 @@ over arrays large enough to amortise the transfer:
 The old warning still applies in spirit and is worth keeping in mind: **do not
 invent GPU work to justify the hardware.** If a step is fast enough on CPU, leave
 it there.
+
+**torch is per-machine, never a repo-wide pin.** No single build spans our
+hardware: 2.9.1+cu128 covers sm_70–sm_120 (both workstation cards) and drops the
+1080 Ti at sm_61; 2.5.1+cu121 covers sm_50–sm_90 and cannot see the RTX 5050.
+Pinning one silently disables a GPU somewhere, which is what happened — cu121
+was installed by hand, chosen from memory rather than from the hardware, and
+left the RTX 5050 dead for a day. Install per host and verify with
+`torch.cuda.get_arch_list()` against the device's compute capability.
+
+Measured on the workstation, torch 2.9.1+cu128:
+
+| device | fp32 | fp64 |
+|---|---:|---:|
+| RTX 3070 | 12.27 TFLOPS | 0.31 TFLOPS |
+| 16-thread CPU | — | 0.28 TFLOPS |
+
+fp64 on a consumer card runs at 1/64 rate and lands on top of the CPU, so **no
+card we own accelerates exact arithmetic**. The entire GPU case is fp32, under
+the precision contract below.
 
 **Precision rule, revised after measurement.** An earlier draft of this section
 required GPU results to be numerically identical to the CPU path. Benchmarking
