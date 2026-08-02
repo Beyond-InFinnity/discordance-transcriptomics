@@ -416,6 +416,13 @@ column is the *least* reliable of the three.
         pd.DataFrame({"column": list(helps), "description": [helps[k] for k in helps]}),
         hide_index=True,
         width="stretch",
+        # The descriptions are the point of this table; at default width every
+        # one of them truncates mid-sentence and the table conveys nothing.
+        column_config={
+            "column": st.column_config.TextColumn(width="small"),
+            "description": st.column_config.TextColumn(width="large"),
+        },
+        row_height=56,
     )
     st.divider()
     st.markdown(
