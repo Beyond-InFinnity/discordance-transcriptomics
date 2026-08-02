@@ -54,6 +54,7 @@ seaborn>=0.13
 surfplot>=0.2           # surface figures
 datalad                 # OpenNeuro fetch
 streamlit>=1.32
+plotly>=5.20          # interactive cortical surface in app/
 pytest>=8.0
 ruff
 # Strips notebook outputs on commit. .gitattributes is committed, but the git
