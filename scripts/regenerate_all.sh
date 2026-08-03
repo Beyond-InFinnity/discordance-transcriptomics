@@ -145,6 +145,13 @@ step "Phase 4  — frozen gene sets, both nulls"        $PY scripts/p4_genesets.
 # that count cancelled algebraically to the significance test (see p0d).
 step "Phase 0d — resolvable tests (manuscript Table 1)" $PY scripts/p0d_resolvable_tests.py
 step "Phase 4b — data-driven arm"                     $PY scripts/p4b_datadriven.py --max-cells $CELLS --n-draws $NDRAWS
+# The same frozen sets and nulls as Phase 4, aggregating per gene instead of
+# averaging expression first. Phase 0c shows the averaged score is the less
+# reliable measurement for every large set, and this is what the same data
+# supports without it. Runs on the FULL multiverse: the rotations do not depend
+# on the gene, so all ~15,500 genes against 10,000 rotations collapse into one
+# matrix product per cell x target -- minutes, not days.
+step "Phase 4c — per-gene arm, full multiverse"       $PY scripts/p4c_pergene.py --n-draws $NDRAWS $P4_CELLS
 step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
 # Disclosed sensitivity analysis, run every time rather than on request. The
 # pre-registered specification removes only the FIRST connectivity gradient, but
