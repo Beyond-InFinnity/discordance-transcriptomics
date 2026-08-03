@@ -9,16 +9,38 @@ Two questions this answers:
    metabolism disagree?*
 
 **Design decision that carries the science.** Every parcel is drawn with opacity
-proportional to how much it should be trusted — scanner-dropout coverage, map
-reliability, and whether any donor tissue was sampled inside it. Regions the data
-cannot support fade into the background rather than presenting a confident
-colour. The project's central finding is that most of what was measured could not
-be resolved; a viewer that hid that behind uniform saturation would be lying by
-omission. The fade is switchable, and the legend says exactly what it encodes.
+proportional to how much it should be trusted — scanner-dropout coverage, the
+split-half reliability of *the column being displayed*, and whether any donor
+tissue was sampled inside it. Regions the data cannot support fade into the
+background rather than presenting a confident colour. The project's central
+finding is that most of what was measured could not be resolved; a viewer that
+hid that behind uniform saturation would be lying by omission. The fade is
+switchable, and the legend says exactly what it encodes.
+
+The reliability term follows the metric because it is a property of the map, not
+of the parcel. An earlier version read ``map_reliability_coupling`` off the row —
+a single constant, 0.7105, the coupling-angle map's reliability — and applied it
+to whatever was on screen. That flattered ``discordance_risk`` (0.49, flagged
+``low_reliability`` in the schema) and penalised ``baseline_oef`` (0.98): wrong in
+both directions, for the two columns that matter most. It also capped every
+parcel at 0.887 so none could read as fully supported, and was the binding term
+for 29 of 100 parcels — a third of the map rated by a number with no per-parcel
+content.
 
 Colour is derived from what is actually measured: the ratio of oxygenated to
 deoxygenated haemoglobin. Arterial scarlet through fixed-tissue neutral to venous
 indigo.
+
+**Why the brain is hovered, not clicked.** Plotly's WebGL 3D scenes do not emit
+``plotly_click`` at all — verified against plotly.js 3.6.0 as bundled by Streamlit
+1.59.1, on a fully exposed marker, for a plain click, a zero-movement down/up, a
+double click, and with ``scene.dragmode`` disabled. ``plotly_hover`` fires
+correctly and carries ``customdata``. Since ``st.plotly_chart(on_select=...)``
+listens for click and lasso events, click-to-select on a surface is unreachable
+from this stack, and an earlier version of this file advertised it anyway: the
+caption said "click a region" while the anchors it relied on sat *inside* the
+mesh, depth-occluded and inert. Selection lives in the Region control, which
+always worked; the surface reads out under the cursor.
 
 Nothing here computes a result. The app reads artifacts built by the pipeline and
 uses ``src.data.parcellate`` for parcellation geometry only (R4 forbids
@@ -62,6 +84,19 @@ TISSUE = "#C9C2B6"  # fixed tissue, the neutral midpoint
 FIELD = "#E9EDF2"  # cool pale slate — the background the fade dissolves into
 INK = "#16191F"
 INSTRUMENT = "#0F766E"  # interface only; never encodes data
+
+# Millimetres to lift a hover anchor off the surface, toward its camera. Large
+# enough to clear the mesh at every parcel, small enough that the readout still
+# lands on the tissue it describes.
+ANCHOR_LIFT = 2.5
+
+# Reliability ramp: below RELIABILITY_FLOOR a map carries no usable regional
+# signal, at RELIABILITY_FULL it is taken at face value. The floor sits just
+# under the project's own 0.5 gate (CLAUDE.md §9, Phase 0a), so a column the
+# schema flags `low_reliability` lands below the "unresolved" band rather than
+# being quietly rounded up into usability.
+RELIABILITY_FLOOR = 0.40
+RELIABILITY_FULL = 0.75
 
 st.markdown(
     f"""
@@ -137,6 +172,30 @@ def load_surface() -> dict:
         m = labels == lab
         if m.any():
             centroids[lab] = coords[m].mean(axis=0)
+
+    # Hover anchors, one set per camera — and they cannot be the centroids.
+    #
+    # A centroid is the mean of a parcel's vertices, so it lies *inside* the
+    # surface: 99 of 100 parcels have their own tissue between the camera and
+    # their centroid. Plotly depth-tests markers against Mesh3d, so anchors put
+    # there are occluded and never hover, which is why the brain was inert.
+    # Anchor instead to the vertex nearest each camera and lift it clear, so the
+    # marker sits just in front of the tissue it labels. A parcel facing away
+    # from a camera keeps its anchor behind the mesh and stays correctly
+    # unreachable in that view — you should not be able to read out the medial
+    # wall from the lateral picture.
+    anchors = {}
+    for scene, sign in (("lateral", -1.0), ("medial", 1.0)):
+        pts = np.full((n_parcels + 1, 3), np.nan)
+        for lab in range(1, n_parcels + 1):
+            m = labels == lab
+            if not m.any():
+                continue
+            v = coords[m]
+            k = np.argmin(v[:, 0]) if sign < 0 else np.argmax(v[:, 0])
+            pts[lab] = v[k] + np.array([sign * ANCHOR_LIFT, 0.0, 0.0])
+        anchors[scene] = pts
+
     return {
         "coords": coords,
         "faces": faces,
@@ -144,7 +203,23 @@ def load_surface() -> dict:
         "labels": labels,
         "n_parcels": n_parcels,
         "centroids": centroids,
+        "anchors": anchors,
     }
+
+
+def metric_reliability(schema: dict, metric: str) -> float | None:
+    """Split-half reliability of one column, or None where none was established.
+
+    Read per metric rather than taken from ``map_reliability_coupling``, which is
+    a single number — the coupling-angle map's reliability — repeated on every
+    row. Using it for whatever happened to be on screen flattered
+    ``discordance_risk`` (0.49, flagged low) and penalised ``baseline_oef``
+    (0.98), i.e. it was wrong in both directions for the two columns that matter
+    most.
+    """
+    prop = schema.get("items", {}).get("properties", {}).get(metric, {})
+    rel = prop.get("split_half_reliability")
+    return float(rel) if rel is not None else None
 
 
 def hex_to_rgb(h: str) -> np.ndarray:
@@ -161,31 +236,97 @@ def diverging(t: np.ndarray) -> np.ndarray:
     )
 
 
-def confidence(row: pd.Series) -> float:
+def confidence(row: pd.Series, reliability: float | None) -> float:
     """How much of this parcel's colour the data actually supports, in [0, 1].
 
-    Three independent things can undermine a parcel: the scanner lost most of
-    its vertices to signal dropout, the map it comes from is unreliable, or no
-    donor tissue was sampled inside it. The weakest of the three governs, since
-    any one of them alone is disqualifying.
+    Three independent things can undermine a parcel: the scanner lost most of its
+    vertices to signal dropout, the map on screen is unreliable, or no donor
+    tissue was sampled inside it. The weakest governs, since any one alone is
+    disqualifying.
+
+    ``reliability`` belongs to the metric being displayed and is passed in rather
+    than read off the row: only the first and third terms are properties of the
+    parcel. Where a column has no established split-half reliability the term is
+    dropped rather than assumed — an unmeasured map is not a perfect one, and
+    pretending otherwise is the error this argument exists to prevent.
     """
     cov = float(row.dropout_snr_coverage)  # fraction of vertices surviving SNR
-    rel = float(row.map_reliability_coupling)  # split-half, map-level
     ahba = row.get("ahba_n_samples", np.nan)
-    terms = [
-        np.clip((cov - 0.30) / 0.45, 0, 1),  # 0.30 unusable → 0.75 fully usable
-        np.clip((rel - 0.40) / 0.35, 0, 1),  # below 0.40 is not a map
-    ]
+    terms = [np.clip((cov - 0.30) / 0.45, 0, 1)]  # 0.30 unusable → 0.75 usable
+    if reliability is not None:
+        terms.append(
+            np.clip(
+                (reliability - RELIABILITY_FLOOR)
+                / (RELIABILITY_FULL - RELIABILITY_FLOOR),
+                0,
+                1,
+            )
+        )
     if pd.notna(ahba):
         terms.append(np.clip(float(ahba) / 3.0, 0, 1))  # 0 samples → interpolated
     return float(min(terms))
 
 
+def table(frame: pd.DataFrame, widths: tuple[str, ...] | None = None) -> None:
+    """Render a small table as HTML, deliberately not through ``st.dataframe``.
+
+    ``st.dataframe`` serialises via ``pyarrow.Table.from_pandas``, which
+    zero-copies the pandas buffers. Streamlit cancels an in-flight script run the
+    moment a new interaction arrives, so a rerun killed inside that call leaves
+    Arrow reading freed memory. This app segfaulted three times that way during a
+    single review session — ``libarrow.so.2500``, null dereference at ``0x18``,
+    the same instruction pointer each time, taking the whole server down.
+
+    Every table here is a handful of rows of text. Rendering them directly costs
+    nothing and removes Arrow from the per-rerun path entirely, which is a
+    structural fix rather than a narrowed race window. ``pyarrow`` stays in
+    requirements.txt — the pipeline uses it for parquet, off the interactive path.
+    """
+    from html import escape
+
+    cols = list(frame.columns)
+    w = widths or ()
+    head = "".join(
+        f'<th style="text-align:left;padding:.45rem .6rem;font-weight:600;'
+        f"font-family:'IBM Plex Mono',monospace;font-size:.62rem;"
+        f"letter-spacing:.1em;text-transform:uppercase;opacity:.55;"
+        f"border-bottom:1px solid rgba(22,25,31,.13);"
+        f'{f"width:{w[i]};" if i < len(w) else ""}">{escape(str(c))}</th>'
+        for i, c in enumerate(cols)
+    )
+    body = "".join(
+        "<tr>"
+        + "".join(
+            f'<td style="padding:.45rem .6rem;vertical-align:top;font-size:.82rem;'
+            f'border-bottom:1px solid rgba(22,25,31,.07);">{escape(str(v))}</td>'
+            for v in r
+        )
+        + "</tr>"
+        for r in frame.itertuples(index=False)
+    )
+    st.markdown(
+        f'<table style="width:100%;border-collapse:collapse;">'
+        f"<thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>",
+        unsafe_allow_html=True,
+    )
+
+
 # ============================================================== figure ======
+METRICS = {
+    "discordance_risk": "Discordance risk",
+    "discordance_risk_extraction": "Extraction mode",
+    "discordance_risk_overshoot": "Overshoot mode",
+    "baseline_oef": "Baseline oxygen extraction",
+    "baseline_cbf": "Baseline blood flow",
+    "dropout_snr_coverage": "Scanner coverage",
+}
+
+
 def brain_figure(
     surf: dict,
     sub: pd.DataFrame,
     metric: str,
+    reliability: float | None,
     fade: bool,
     selected: int | None,
     neighbours: list[int],
@@ -195,7 +336,7 @@ def brain_figure(
     conf = np.ones(surf["n_parcels"] + 1)
     for _, r in sub.iterrows():
         vals[int(r.parcel_index)] = r[metric]
-        conf[int(r.parcel_index)] = confidence(r)
+        conf[int(r.parcel_index)] = confidence(r, reliability)
 
     finite = vals[np.isfinite(vals)]
     lo, hi = (finite.min(), finite.max()) if finite.size else (0.0, 1.0)
@@ -243,57 +384,70 @@ def brain_figure(
                 showscale=False,
             )
         )
-    # Clickable parcel anchors. Mesh3d itself does not emit usable click events,
-    # so selection rides on an invisible scatter at each parcel centroid.
-    cen = surf["centroids"]
-    idx = [int(p) for p in sub.parcel_index if np.isfinite(cen[int(p)][0])]
+    # Readout anchors, per scene. Invisible markers that carry the tooltip; see
+    # load_surface() for why they sit on the surface rather than at the centroid,
+    # and the module docstring for why this is hover and not click.
     names = {int(r.parcel_index): r.parcel_name for _, r in sub.iterrows()}
-    fig.add_trace(
-        go.Scatter3d(
-            x=cen[idx, 0],
-            y=cen[idx, 1],
-            z=cen[idx, 2],
-            mode="markers",
-            marker=dict(size=7, color="rgba(0,0,0,0.001)"),
-            customdata=idx,
-            name="",
-            scene="scene",
-            hovertemplate=[
-                f"<b>{names[p]}</b><br>{metric.replace('_', ' ')}: "
-                f"{vals[p]:.3f}<br>confidence {conf[p]:.0%}<extra></extra>"
-                for p in idx
-            ],
+    for scene, key in (("scene", "lateral"), ("scene2", "medial")):
+        anc = surf["anchors"][key]
+        idx = [int(p) for p in sub.parcel_index if np.isfinite(anc[int(p)][0])]
+        fig.add_trace(
+            go.Scatter3d(
+                x=anc[idx, 0],
+                y=anc[idx, 1],
+                z=anc[idx, 2],
+                mode="markers",
+                marker=dict(size=9, color="rgba(0,0,0,0.001)"),
+                customdata=idx,
+                name="",
+                scene=scene,
+                showlegend=False,
+                hovertemplate=[
+                    f"<b>{names[p]}</b><br>{METRICS.get(metric, metric).lower()}: "
+                    + ("no data" if not np.isfinite(vals[p]) else f"{vals[p]:.3f}")
+                    + f"<br>confidence {conf[p]:.0%}<extra></extra>"
+                    for p in idx
+                ],
+            )
         )
-    )
+
     if selected is not None and neighbours:
         # Arcs to the most molecularly similar parcels. Similarity of expression
         # profile — NOT anatomical or functional connectivity.
+        #
+        # Drawn in BOTH scenes. Pinning them to the lateral one left arcs from a
+        # medially-sited parcel hanging over a surface that does not contain
+        # either endpoint.
+        cen = surf["centroids"]
         a = cen[selected]
-        for nb in neighbours:
-            b = cen[nb]
-            # Lift the arc clear of the LATERAL surface. Scaling the midpoint
-            # outward from the origin fails for parcels on opposite sides: their
-            # midpoint sits near zero, so the "lifted" arc is drawn inside the
-            # mesh and is invisible. Push it out along -x instead, which is the
-            # direction the lateral view is seen from.
-            mid = (a + b) / 2
-            mid[0] = min(a[0], b[0]) - 34.0
-            mid[1:] *= 1.08
-            t = np.linspace(0, 1, 28)[:, None]
-            curve = (1 - t) ** 2 * a + 2 * (1 - t) * t * mid + t**2 * b
-            fig.add_trace(
-                go.Scatter3d(
-                    x=curve[:, 0],
-                    y=curve[:, 1],
-                    z=curve[:, 2],
-                    mode="lines",
-                    line=dict(color=INSTRUMENT, width=3.5),
-                    opacity=0.85,
-                    hoverinfo="skip",
-                    showlegend=False,
-                    scene="scene",
+        for scene, sign in (("scene", -1.0), ("scene2", 1.0)):
+            for nb in neighbours:
+                b = cen[nb]
+                # Lift the arc clear of the surface this camera sees. Scaling the
+                # midpoint outward from the origin fails for parcels on opposite
+                # sides: their midpoint sits near zero, so the "lifted" arc is
+                # drawn inside the mesh and is invisible. Push it out along the
+                # view axis instead.
+                mid = (a + b) / 2
+                mid[0] = (
+                    (min(a[0], b[0]) - 34.0) if sign < 0 else (max(a[0], b[0]) + 34.0)
                 )
-            )
+                mid[1:] *= 1.08
+                t = np.linspace(0, 1, 28)[:, None]
+                curve = (1 - t) ** 2 * a + 2 * (1 - t) * t * mid + t**2 * b
+                fig.add_trace(
+                    go.Scatter3d(
+                        x=curve[:, 0],
+                        y=curve[:, 1],
+                        z=curve[:, 2],
+                        mode="lines",
+                        line=dict(color=INSTRUMENT, width=3.5),
+                        opacity=0.85,
+                        hoverinfo="skip",
+                        showlegend=False,
+                        scene=scene,
+                    )
+                )
     axoff = dict(visible=False)
     common = dict(
         xaxis=axoff,
@@ -337,15 +491,6 @@ def brain_figure(
 df, schema, prof = load_tables()
 sub = df[df.parcellation == PRIMARY].reset_index(drop=True)
 
-METRICS = {
-    "discordance_risk": "Discordance risk",
-    "discordance_risk_extraction": "Extraction mode",
-    "discordance_risk_overshoot": "Overshoot mode",
-    "baseline_oef": "Baseline oxygen extraction",
-    "baseline_cbf": "Baseline blood flow",
-    "dropout_snr_coverage": "Scanner coverage",
-}
-
 st.markdown('<div class="eyebrow">Cortical oxygen atlas</div>', unsafe_allow_html=True)
 st.markdown("# Where the BOLD signal can be trusted")
 st.markdown(
@@ -358,6 +503,16 @@ st.markdown('<hr class="rule">', unsafe_allow_html=True)
 
 left, right = st.columns([1.45, 1], gap="large")
 
+# The Region control is declared before the surface that depends on it. Streamlit
+# places output by container, not by execution order, so `right` still renders to
+# the right — this only removes the extra rerun the old code needed to get the
+# selection back to the figure.
+with right:
+    names = sub.parcel_name.tolist()
+    name = st.selectbox("Region", names, key="region")
+    row = sub[sub.parcel_name == name].iloc[0]
+    sel = int(row.parcel_index)
+
 with left:
     c1, c2 = st.columns([2, 1.5])
     metric = c1.selectbox(
@@ -367,37 +522,26 @@ with left:
         "Fade by confidence",
         value=True,
         help="Dissolve parcels the data cannot support toward the "
-        "background. Encodes coverage, reliability and donor "
-        "sampling — not the metric.",
+        "background. Encodes coverage, this metric's split-half "
+        "reliability, and donor sampling — not the metric's value.",
     )
 
+    reliability = metric_reliability(schema, metric)
     surf = load_surface()
-    sel_state = st.session_state.get("sel_parcel")
-    sel = int(sel_state) if sel_state else None
 
     # Molecular neighbours of the selected parcel, from gene-set profiles.
     neighbours: list[int] = []
-    if sel is not None:
-        w = prof.pivot(index="parcel_index", columns="gene_set", values="score_median")
-        if sel in w.index:
-            c = np.corrcoef(w.to_numpy())
-            order = np.argsort(c[w.index.get_loc(sel)])[::-1]
-            neighbours = [int(w.index[o]) for o in order if int(w.index[o]) != sel][:6]
+    w = prof.pivot(index="parcel_index", columns="gene_set", values="score_median")
+    if sel in w.index:
+        c = np.corrcoef(w.to_numpy())
+        order = np.argsort(c[w.index.get_loc(sel)])[::-1]
+        neighbours = [int(w.index[o]) for o in order if int(w.index[o]) != sel][:6]
 
-    ev = st.plotly_chart(
-        brain_figure(surf, sub, metric, fade, sel, neighbours),
+    st.plotly_chart(
+        brain_figure(surf, sub, metric, reliability, fade, sel, neighbours),
         width="stretch",
-        on_select="rerun",
-        selection_mode="points",
         key="brain",
     )
-    pts = (ev or {}).get("selection", {}).get("points", [])
-    if pts and pts[0].get("customdata") is not None:
-        cd = pts[0]["customdata"]
-        picked = int(cd[0] if isinstance(cd, list) else cd)
-        if picked != sel:
-            st.session_state["sel_parcel"] = picked
-            st.rerun()
 
     lo_lab = f"{sub[metric].min():.2f}"
     hi_lab = f"{sub[metric].max():.2f}"
@@ -411,22 +555,23 @@ with left:
         <span style="margin-left:.8rem;opacity:.7;">
         {"faded = low confidence" if fade else "fade off"}</span></div>
         <div style="font-size:.72rem;opacity:.55;margin-top:.45rem;">
-        Left hemisphere, inflated. Click a region to select it.</div>""",
+        Left hemisphere, inflated. Drag to turn, hover to read a region out,
+        and pick one with <b>Region</b> to see its molecular profile.</div>""",
         unsafe_allow_html=True,
     )
 
-with right:
-    names = sub.parcel_name.tolist()
-    default = (
-        names.index(sub.loc[sub.parcel_index == sel, "parcel_name"].iloc[0]) if sel else 0
-    )
-    name = st.selectbox("Region", names, index=default)
-    row = sub[sub.parcel_name == name].iloc[0]
-    if int(row.parcel_index) != sel:
-        st.session_state["sel_parcel"] = int(row.parcel_index)
-        st.rerun()
+    if reliability is not None and reliability < 0.5:
+        st.warning(
+            f"**{METRICS[metric]}** has a split-half reliability of "
+            f"{reliability:.2f}, below this project's 0.5 floor, so every parcel "
+            "reads as unresolved no matter how well the scanner covered it. "
+            "That is the honest picture for this column — it sums two "
+            "topographically distinct modes. Use **Extraction mode** "
+            "(0.58) or **Overshoot mode** (0.60) instead."
+        )
 
-    conf = confidence(row)
+with right:
+    conf = confidence(row, reliability)
     network = name.split("_")[2] if len(name.split("_")) > 2 else "—"
     st.markdown(
         f'<div class="metric-label">{network} network · parcel {int(row.parcel_index)}'
@@ -473,25 +618,29 @@ with right:
         unsafe_allow_html=True,
     )
 
+    # The reliability shown is the DISPLAYED metric's, not the coupling map's.
+    # Naming the metric in the row label is the point: the same parcel is well
+    # supported for baseline OEF (0.98) and unresolved for discordance risk
+    # (0.49), and a row that just said "map reliability" hid that entirely.
     q = pd.DataFrame(
         {
             "check": [
                 "Scanner coverage",
                 "Venous partial volume",
-                "Map reliability",
+                f"Reliability — {METRICS[metric].lower()}",
                 "AHBA samples",
             ],
             "value": [
                 f"{row.dropout_snr_coverage:.0%}",
                 f"{row.venous_partial_volume:.3f}",
-                f"{row.map_reliability_coupling:.3f}",
+                "not established" if reliability is None else f"{reliability:.3f}",
                 "—"
                 if pd.isna(row.get("ahba_n_samples"))
                 else f"{int(row.ahba_n_samples)}",
             ],
         }
     )
-    st.dataframe(q, hide_index=True, width="stretch")
+    table(q, widths=("62%", "38%"))
 
     if row.dropout_snr_coverage < 0.35:
         st.warning(
@@ -609,7 +758,7 @@ with tab_map:
                     "than average. A BOLD increase here is less safely read as "
                     "an increase in oxygen metabolism."
                 )
-            st.dataframe(
+            top = (
                 merged.loc[ok]
                 .assign(abs_a=lambda d: d.activation.abs())
                 .nlargest(12, "abs_a")[
@@ -619,9 +768,18 @@ with tab_map:
                         "discordance_risk",
                         "dropout_snr_coverage",
                     ]
-                ],
-                hide_index=True,
-                width="stretch",
+                ]
+            )
+            table(
+                pd.DataFrame(
+                    {
+                        "region": top.parcel_name,
+                        "activation": top.activation.map("{:.3f}".format),
+                        "discordance risk": top.discordance_risk.map("{:.1%}".format),
+                        "coverage": top.dropout_snr_coverage.map("{:.0%}".format),
+                    }
+                ),
+                widths=("46%", "18%", "20%", "16%"),
             )
 
 with tab_about:
@@ -639,10 +797,20 @@ The two modes are physiologically distinct and spatially anticorrelated
 (Spearman ≈ −0.56), so the combined column is the *least* reliable of the three.
 Prefer the modes.
 
-**What the fade encodes.** Scanner-dropout coverage, map reliability, and whether
-any donor tissue was sampled in the parcel — whichever is worst. It is not the
-metric. Switch it off to see raw colour, but a confident colour on a parcel with
-40% coverage is a confident colour about nothing.
+**What the fade encodes.** Scanner-dropout coverage, the split-half reliability
+*of the column currently on screen*, and whether any donor tissue was sampled in
+the parcel — whichever is worst. It is not the metric's value. Switch it off to
+see raw colour, but a confident colour on a parcel with 40% coverage is a
+confident colour about nothing.
+
+Because the reliability term follows the displayed column, the same parcel can be
+well supported for baseline oxygen extraction (0.98) and unresolved for
+discordance risk (0.49). That is not an inconsistency — it is the two columns
+being known to different degrees in the same piece of cortex.
+
+**Why you hover the brain instead of clicking it.** Plotly's WebGL 3D scenes emit
+no click event; only hover. Selection therefore lives in the **Region** control.
+Everything the surface knows is in the tooltip.
 """
     )
     st.markdown('<hr class="rule">', unsafe_allow_html=True)
@@ -651,15 +819,9 @@ metric. Switch it off to see raw colour, but a confident colour on a parcel with
         for k, v in schema.get("items", {}).get("properties", {}).items()
     }
     st.markdown("**Column definitions** — straight from the released schema")
-    st.dataframe(
+    table(
         pd.DataFrame({"column": list(helps), "description": list(helps.values())}),
-        hide_index=True,
-        width="stretch",
-        row_height=56,
-        column_config={
-            "column": st.column_config.TextColumn(width="small"),
-            "description": st.column_config.TextColumn(width="large"),
-        },
+        widths=("26%", "74%"),
     )
 
 st.sidebar.markdown(
