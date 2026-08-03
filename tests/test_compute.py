@@ -117,12 +117,33 @@ class TestCorrectness:
 
 @pytest.mark.skipif(not HAS_TORCH, reason="torch not installed")
 class TestTorchAgreesWithNumpy:
-    def test_float64_cpu_is_exact(self, pair):
-        """float64 must be bit-identical, since that is the point of offering it."""
+    def test_float64_cpu_agrees_to_rounding(self, pair):
+        """float64 on CPU must agree with numpy to rounding, not bit-for-bit.
+
+        This asserted ``assert_array_equal`` — bit-identity — and passed on the
+        laptop while failing on the workstation, which is the machine that
+        actually runs the pipeline: 1,677 of 60,000 elements differed, by at most
+        3.7e-13 relative. Nothing is wrong. torch and numpy dispatch to different
+        BLAS builds, which block and thread a matmul differently, and float64
+        addition is not associative, so the summation order decides the last few
+        ulps. Two independent implementations cannot be held to bit-identity on
+        any machine, let alone the same result across machines.
+
+        CLAUDE.md §4.2 already withdrew that requirement — "the standard is
+        identical decisions with the discrepancy measured, not identical bits" —
+        after benchmarking showed a bit-identical GPU path was achievable only at
+        no speed advantage. This test was left behind from the earlier draft, and
+        it is the same reordering argument the CUDA test below already makes.
+
+        The tolerance is far tighter than anything that could change a decision:
+        the flip-rate assertion elsewhere in this file is what guards that.
+        """
         a, b = pair
-        np.testing.assert_array_equal(
+        np.testing.assert_allclose(
             matmul_abs(a, b, backend="torch-cpu", dtype="float64"),
             matmul_abs(a, b, backend="numpy", dtype="float64"),
+            rtol=1e-11,
+            atol=1e-11,
         )
 
     @pytest.mark.skipif(not HAS_CUDA, reason="no CUDA device")
