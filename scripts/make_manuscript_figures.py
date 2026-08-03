@@ -8,10 +8,17 @@ result. A figure set that does not carry the argument is decoration.
 
 These five do:
 
-1. **What this design can resolve.** Implied true effect against detectability
-   floor for all 33 gene-set x outcome tests. Everything above the diagonal is
-   resolvable; three points are. This is Figure 1 because §3.2 precedes the
-   hypothesis tests.
+1. **What this design can detect.** The detectability floor -- the smallest TRUE
+   effect each test could resolve -- against what was observed, for all 33
+   gene-set x outcome tests. The two axes are independent: the floor is a
+   property of the design, the observation is not. This is Figure 1 because §3.2
+   precedes the hypothesis tests.
+
+   An earlier version plotted implied-true-effect against the floor and split
+   them on the diagonal. Both axes divided by the same attenuation ceiling, so
+   the diagonal reduced to |rho| >= spin threshold and the panel restated the
+   significance test as though it were a power analysis. See
+   ``p0d_resolvable_tests.py`` for the algebra.
 2. **The primary effect across the multiverse**, and what the hierarchy control
    does to it under both specifications.
 3. **The mediation as a bound**, with the undetectable region shaded — the
@@ -137,33 +144,26 @@ def resolvability() -> pd.DataFrame:
     floors = pd.read_csv(R / "p0c_detectability_floor.csv")
     summary = pd.read_csv(R / "p4_genesets_summary.csv")
     panel_rel = pd.read_csv(R / "p0c_geneset_reliability.csv").set_index("gene_set")
-    label = {v: k for k, v in OUTCOME_LABEL.items()}
-    rows = []
-    for _, r in summary.iterrows():
-        if r.target not in OUTCOME_LABEL:
-            continue
-        m = floors[
-            (floors.gene_set == r.gene_set)
-            & (floors.brain_map == OUTCOME_LABEL[r.target])
-        ]
-        if not len(m):
-            continue
-        ceil = float(m.attenuation_ceiling.iloc[0])
-        floor = float(m.detectable_true_rho.iloc[0])
-        ok = ceil > 0 and not math.isnan(ceil)
-        rows.append(
-            {
-                "gene_set": r.gene_set,
-                "outcome": r.target,
-                "implied_true": abs(r.rho_median) / ceil if ok else np.nan,
-                "floor": floor,
-                "panel_rel": float(panel_rel.loc[r.gene_set, "reliability_panel"]),
-                "resolvable": bool(ok and abs(r.rho_median) / ceil >= floor),
-                "untestable": not ok,
-            }
+    # Read Phase 0d's table rather than recomputing it.
+    #
+    # This function used to derive `resolvable` itself, as
+    # `|rho_observed| / ceiling >= spin / ceiling`. The ceiling cancels, so that
+    # test was `|rho_observed| >= spin` -- the significance test relabelled as a
+    # power analysis. The same formula had been written out independently in
+    # three files, so correcting p0d alone would have left the figure and the
+    # paper-number check still asserting it. One source of truth now.
+    _ = summary, floors, panel_rel  # kept as an existence check on their inputs
+    hits = sorted(R.glob("p0d_resolvable_tests_*.csv"))
+    if not hits:
+        raise FileNotFoundError(
+            "no p0d_resolvable_tests_*.csv in results/ — run "
+            "scripts/p0d_resolvable_tests.py before the manuscript figures"
         )
-    _ = label
-    return pd.DataFrame(rows)
+    d = pd.read_csv(hits[0])
+    d["floor"] = d.detectability_floor
+    d["untestable"] = ~np.isfinite(d.floor)
+    d["abs_rho"] = d.rho_observed.abs()
+    return d
 
 
 # ------------------------------------------------------------- figures ------
@@ -176,41 +176,63 @@ def figure1(out: Path) -> list[str]:
         1, 2, figsize=(W2, 82 * MM), gridspec_kw={"width_ratios": [1.05, 1]}
     )
 
-    # -- A: implied true effect vs the floor it must clear ------------------
-    # Resolvable means implied true effect >= floor, i.e. ABOVE the diagonal. A
-    # first version shaded and labelled this the wrong way round, putting all
-    # three resolvable tests inside a region captioned "not resolvable".
-    lim = 1.0
-    ax.fill_between(
-        [0, lim], [0, 0], [0, lim], color=OI["grey"], alpha=0.16, lw=0, zorder=0
-    )
-    ax.plot([0, lim], [0, lim], color=OI["black"], lw=0.8, zorder=3)
+    # -- A: what the design could detect, against what it saw ---------------
+    #
+    # The two axes are deliberately independent. The floor is a property of the
+    # design -- threshold divided by the attenuation ceiling -- and does not use
+    # the observation. The observed |rho| is the observation and does not use the
+    # floor. The previous version plotted |rho|/ceiling against threshold/ceiling,
+    # which shares a denominator, so its diagonal was just |rho| >= threshold.
+    finite = d[np.isfinite(d.floor)]
+    spin = float(np.nanmin(finite.floor * finite.attenuation_ceiling))
+    xmax = 1.05
+
+    # Plausibility bands. Labels for reading, not a test -- see p0d's BANDS.
+    for lo, hi, shade in [
+        (0.0, 0.30, 0.05),
+        (0.30, 0.50, 0.11),
+        (0.50, 0.70, 0.17),
+        (0.70, xmax, 0.24),
+    ]:
+        ax.axvspan(lo, hi, color=OI["grey"], alpha=shade, lw=0, zorder=0)
     ax.text(
-        0.62,
-        0.955,
-        "resolvable",
-        transform=ax.transAxes,
-        fontsize=7,
-        color="#333333",
+        0.15,
+        0.965,
+        "modest",
+        transform=ax.get_xaxis_transform(),
+        fontsize=6,
         ha="center",
+        color="#555555",
         style="italic",
-        zorder=2,
     )
     ax.text(
-        0.955,
-        0.055,
-        "not resolvable",
-        transform=ax.transAxes,
-        fontsize=7,
-        color="#333333",
-        ha="right",
+        0.87,
+        0.965,
+        "implausible",
+        transform=ax.get_xaxis_transform(),
+        fontsize=6,
+        ha="center",
+        color="#555555",
         style="italic",
-        zorder=2,
     )
+
+    ax.axhline(spin, color=OI["black"], lw=0.8, ls=(0, (4, 2)), zorder=3)
+    ax.text(
+        xmax - 0.02,
+        spin + 0.012,
+        f"spin threshold  |ρ| = {spin:.2f}",
+        fontsize=6.5,
+        ha="right",
+        va="bottom",
+        color="#333333",
+        zorder=4,
+    )
+
     for oc, g in d.groupby("outcome"):
+        g = g[np.isfinite(g.floor)]
         ax.scatter(
             g.floor,
-            g.implied_true,
+            g.abs_rho,
             s=30,
             alpha=0.9,
             facecolor=OUTCOME_COLOUR[oc],
@@ -219,19 +241,15 @@ def figure1(out: Path) -> list[str]:
             label=OUTCOME_LABEL[oc],
             zorder=4,
         )
-    # Leader lines. The resolvable points sit close together near the diagonal,
-    # so floating labels cannot be matched to them unambiguously.
-    #
-    # Anchor positions are derived, not hard-coded. A first version kept a dict
-    # keyed by the three gene sets resolvable in the full run; under any other
-    # settings a different set qualifies and the figure died on a KeyError. A
+
+    # Label whatever cleared the threshold, derived rather than hard-coded: a
     # figure must not encode its own results.
-    res = d[d.resolvable].sort_values("floor").reset_index(drop=True)
-    for i, r in res.iterrows():
+    sig = d[np.isfinite(d.floor) & (d.abs_rho >= spin)].sort_values("floor")
+    for i, (_, r) in enumerate(sig.reset_index(drop=True).iterrows()):
         left = i % 2 == 0
         ax.annotate(
             r.gene_set.replace("HALLMARK_", "").replace("_", " ").lower(),
-            xy=(r.floor, r.implied_true),
+            xy=(r.floor, r.abs_rho),
             xytext=(-14 if left else 14, 16 if left else -18),
             textcoords="offset points",
             fontsize=6.5,
@@ -242,23 +260,27 @@ def figure1(out: Path) -> list[str]:
                 arrowstyle="-", lw=0.5, color="#666666", shrinkA=1, shrinkB=3
             ),
         )
-    ax.set_xlim(0, lim)
-    ax.set_ylim(0, lim)
-    ax.set_aspect("equal")
-    ax.set_xlabel("detectability floor (smallest resolvable true |ρ|)")
-    ax.set_ylabel("implied true |ρ|  (observed ÷ attenuation ceiling)")
+
+    n_out = int((~np.isfinite(d.floor)).sum())
+    ax.set_xlim(0, xmax)
+    ax.set_ylim(0, max(0.55, float(d.abs_rho.max()) * 1.25))
+    ax.set_xlabel("detectability floor — smallest TRUE |ρ| this test could resolve")
+    ax.set_ylabel("observed |ρ| (multiverse median)")
+    # Anchored below the band labels along the top; at loc='upper right' the
+    # legend box sat on top of the "implausible" annotation.
     ax.legend(
         frameon=False,
-        loc="upper left",
-        bbox_to_anchor=(0.015, 0.88),
+        loc="upper right",
+        bbox_to_anchor=(1.0, 0.90),
         handletextpad=0.25,
         borderpad=0.0,
         labelspacing=0.35,
     )
     ax.set_title(
-        f"{int(d.resolvable.sum())} of {len(d)} tests resolvable",
+        f"no test resolves below |ρ| = {finite.floor.min():.2f}"
+        + (f"\n{n_out} untestable at any effect size" if n_out else ""),
         fontsize=8,
-        pad=6,
+        pad=4,
     )
     panel(ax, "A")
 
@@ -291,7 +313,14 @@ def figure1(out: Path) -> list[str]:
         va="center",
         arrowprops=dict(arrowstyle="-", lw=0.5, color=OI["vermillion"]),
     )
-    bx.set_title("the limiting term in every test it enters", fontsize=8, pad=6)
+    # Derived, never hard-coded: this file's own rule is that a figure must not
+    # encode its own results, and "28 of 33" would break silently on a rerun.
+    n_genes_bind = int((d.binding_side == "genes").sum())
+    bx.set_title(
+        f"gene side is the limiting term\nin {n_genes_bind} of {len(d)} tests",
+        fontsize=8,
+        pad=4,
+    )
     bx.margins(y=0.05)
     panel(bx, "B")
 

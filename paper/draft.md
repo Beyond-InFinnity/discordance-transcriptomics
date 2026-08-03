@@ -16,25 +16,39 @@ association cortex has lower capillary density, weakening or reversing the
 haemodynamic response — has never been tested against molecular vascular
 architecture.
 
-We tested it using Allen Human Brain Atlas microarray across 120 preprocessing
-pipelines, with spatial-autocorrelation-preserving and stability-matched
-competitive nulls throughout. We first asked which tests the design could resolve.
-Of 33 gene-set × outcome tests, **three** exceed their attenuation-adjusted
-detectability floor — and those three are exactly the three returning associations
-that pass both nulls. Against discordance, 1 of 22 tests is resolvable; against
-baseline oxygen extraction fraction (OEF), 2 of 11.
+We tested it using Allen Human Brain Atlas (AHBA) microarray across 120
+preprocessing pipelines, with spatial-autocorrelation-preserving and
+stability-matched competitive nulls throughout. We first asked what effect size
+each test could detect at all. For every gene-set × outcome pairing we computed a
+**detectability floor** — the smallest true correlation resolvable given the
+measured reliability of both maps. **No test in the pre-registered design could
+resolve a true effect below |ρ| = 0.30**, three were untestable at any effect
+size, and 28 of 33 were limited by the gene side rather than the imaging.
 
-Within that resolvable set, **pericyte and mural-cell gene expression predicts
-baseline OEF** (ρ = −0.391, sign-consistent across 100% of 240 tests, spatially
+That limit is substantially **self-imposed**. The standard construct — averaging a
+gene set's members into one spatial score — cancels signal whenever the genes'
+spatial patterns resemble each other less than their shared measurement noise
+does, which holds for every large pathway set we examined. Scoring the same genes
+in smaller pieces recovers reliability: `HALLMARK_HYPOXIA` moves from a panel
+reliability of 0.126 to 0.384 and a floor of 0.88 to 0.51, and
+`GOBP_BLOOD_VESSEL_MORPHOGENESIS` from untestable to a floor of 0.51. Choosing the
+best-measuring construction per set — on reliability alone, never on any outcome —
+improves 18 of 33 pairings and leaves none untestable.
+
+**Pericyte and mural-cell gene expression predicts baseline oxygen extraction
+fraction (OEF)** (ρ = −0.391, sign-consistent across 100% of 240 tests, spatially
 significant in 86%, competitive *p* = 0.0004), in the pre-registered direction,
 strengthening when the unimodal–transmodal hierarchy is partialled out. It does
-not survive family-wide correction (minimum adjusted *p* = 0.130).
+not survive family-wide correction (minimum adjusted *p* = 0.130). Its floor is
+0.330 and it is a small, spatially coherent set, so it is among the few tests the
+design could have resolved.
 
 Mediation to discordance is unsupported across all 15,840 path models, but every
-mediator→outcome estimate falls below the detectability floor: a large effect
+mediator→outcome estimate falls below its detectability floor: a large effect
 (|ρ| ≳ 0.33) is excluded, a moderate one is not. The conjecture's first link is
-supported; its second is **untested rather than refuted**, and we quantify the
-reliability a real test would require.
+supported; its second is **untested rather than refuted**. We quantify the
+reliability a real test would require, and show that a substantial part of the
+shortfall is a choice of estimator rather than a limit of the data.
 
 ---
 
@@ -167,11 +181,28 @@ multiverse distribution.
 For each map we estimate split-half reliability with Spearman–Brown correction and
 partition observed variance into true and error components. For a gene set with
 panel reliability *r*₁ and a brain map with reliability *r*₂, the maximum
-observable correlation is the attenuation ceiling √(*r*₁*r*₂); dividing an observed
-ρ by that ceiling gives the implied true effect. We compare this against the
-smallest true effect the pairing can resolve at conventional power — the
-**detectability floor** — and call a test *resolvable* when the implied true effect
-exceeds its floor.
+observable correlation is the **attenuation ceiling** √(*r*₁*r*₂) — the correlation
+the two would show if the underlying relationship were perfect. Dividing the
+spin-test threshold by that ceiling gives the **detectability floor**: the smallest
+*true* effect the pairing can resolve.
+
+The floor depends only on the two reliabilities and the parcellation. It does not
+use the observed effect, and nothing we report is derived by comparing the two.
+An earlier version of this analysis did make that comparison, calling a test
+*resolvable* when |ρ|/ceiling exceeded threshold/ceiling. The ceiling cancels, so
+that criterion reduced to |ρ| ≥ threshold — the significance test restated. It is
+withdrawn; see Appendix A.
+
+**Construction.** A gene set can be scored as one averaged map, in chunks, or gene
+by gene. These are not equivalent measurements. Averaging *k* genes reduces noise
+variance by a factor [1 + (*k*−1)ρ̄ₑ]/*k* and signal variance by
+[1 + (*k*−1)ρ̄ₛ]/*k*, where ρ̄ₛ and ρ̄ₑ are the mean pairwise correlations among the
+genes' true patterns and among their measurement errors. Averaging therefore
+improves reliability only when ρ̄ₛ > ρ̄ₑ. In AHBA every gene is measured from the
+same tissue samples, so error is shared across genes while signal is shared only
+where genes genuinely co-localise — a condition pathway membership does not
+guarantee. We report reliability under each construction and select per set on
+reliability alone, never on any outcome.
 
 ---
 
@@ -226,40 +257,78 @@ Gene-set panel reliabilities across donors span an order of magnitude:
 | glycolytic enzymes | 0.482 | GOBP_BLOOD_VESSEL_MORPHOGENESIS | **−0.011** |
 | astrocyte | 0.343 | | |
 
-`GOBP_BLOOD_VESSEL_MORPHOGENESIS` has negative panel reliability: its
-donor-to-donor expression pattern does not replicate, so it is untestable against
-any map at any effect size. Reporting a *p*-value for it would be meaningless, and
-we do not.
+`GOBP_BLOOD_VESSEL_MORPHOGENESIS` has negative panel reliability *as a set score*:
+averaged into one map, its donor-to-donor pattern does not replicate at all. Its
+individual genes do (§3.2.1), so this is a property of the construct, not of the
+genes.
 
-Combining these with map reliabilities gives, for each of the 33 gene-set × outcome
-pairings, an attenuation ceiling and a detectability floor:
+Combining these with map reliabilities gives a detectability floor for each of the
+33 pairings:
 
-| outcome | resolvable tests | median floor |
-|---|---|---|
-| baseline OEF | **2 / 11** | 0.420 |
-| overshoot-mode discordance | **1 / 11** | 0.535 |
-| extraction-mode discordance | **0 / 11** | 0.566 |
+| outcome | n | median floor | worst |
+|---|---|---|---|
+| baseline OEF | 11 | 0.388 | untestable |
+| overshoot-mode discordance | 11 | 0.493 | untestable |
+| extraction-mode discordance | 11 | 0.522 | untestable |
 
-**Three of 33 tests are resolvable**, and they are:
-
-| gene set | outcome | ρ | implied true | floor |
-|---|---|---|---|---|
-| pericyte/mural | baseline OEF | −0.391 | 0.526 | 0.330 |
-| HALLMARK_ANGIOGENESIS | baseline OEF | −0.355 | 0.468 | 0.323 |
-| astrocyte | overshoot | +0.256 | 0.559 | 0.535 |
+**No test in the design resolves a true effect below |ρ| = 0.30.** Distributed
+across plausibility bands: 17 pairings could detect only moderate-to-large effects
+(floor 0.30–0.50), 9 only large ones (0.50–0.70), 4 sit above 0.70 where no
+spatial correlation between independent modalities is plausibly expected, and 3
+are untestable at any effect size.
 
 Two consequences follow, and they structure everything below.
 
-First, **the outcome the hypothesis is about is the one the design cannot
-interrogate.** Extraction-mode discordance admits no resolvable gene-set test at
-all. Its median floor of 0.566 exceeds any effect plausibly expected in imaging
-transcriptomics, where ρ ≈ 0.3 is a strong result.
+First, **the outcome the hypothesis is about is the one the design interrogates
+worst.** Extraction-mode discordance has the highest median floor, 0.522, against
+a field in which ρ ≈ 0.3 is a strong result.
 
-Second, **the three resolvable tests are exactly the three that return associations
-passing both null models** (§3.4; competitive *p* = 0.0004, 0.0002, 0.007). Tests
-capable of detecting an effect detected one; tests incapable of it did not. That
-coherence is what one expects if the effects are real and the nulls are calibrated,
-and it is not what one expects from noise.
+Second, **the limit is overwhelmingly on the gene side: 28 of 33 pairings are
+bound by gene-map reliability rather than by the imaging.** Given brain maps of
+0.98 (baseline OEF) against gene-set scores of 0.13–0.67, more subjects would not
+have helped. This is the opposite of where effort in this literature usually goes.
+
+### 3.2.1 How much of the limit was self-imposed
+
+The gene-side bottleneck is partly a property of AHBA and partly a property of how
+gene sets are conventionally scored. Averaging *k* genes into one map improves
+reliability only when the genes' true spatial patterns are more alike than their
+measurement errors (§2.6), and because AHBA measures every gene from the same
+tissue samples, the error is shared by construction while the signal is not.
+
+Scoring the same genes in smaller pieces separates the two:
+
+| gene set | *k* | as one score | in chunks of 5 | per gene |
+|---|---|---|---|---|
+| glucose/lactate transport | 5 | **0.670** | 0.670 | 0.389 |
+| endothelial | 6 | **0.591** | 0.591 | 0.465 |
+| pericyte/mural | 5 | **0.557** | — | 0.450 |
+| HALLMARK_ANGIOGENESIS | 36 | **0.582** | 0.440 | 0.399 |
+| HALLMARK_GLYCOLYSIS | 200 | 0.316 | 0.341 | **0.356** |
+| HALLMARK_OXPHOS | 200 | 0.229 | 0.304 | **0.309** |
+| HALLMARK_HYPOXIA | 200 | 0.126 | 0.357 | **0.384** |
+| GOBP_BLOOD_VESSEL_MORPH. | 53 | **−0.011** | 0.344 | **0.379** |
+| interneuron subclass | 4 | 0.187 | — | **0.678** |
+
+The pattern follows the variance argument rather than set size alone. Small,
+spatially coherent sets — cell-type markers that genuinely co-localise — are best
+averaged. Large database sets are not: pathway co-membership does not imply
+co-localisation, and averaging cancels their signal faster than their noise.
+`interneuron_subclass` is the instructive exception at *k* = 4: PVALB, SST, VIP
+and LAMP5 mark four distinct interneuron populations with genuinely different
+cortical distributions, and averaging them destroys what each measures.
+
+Selecting the best-measuring construction per set — on reliability alone, with no
+reference to any outcome — improves 18 of 33 pairings, lowers the median floor
+from 0.448 to 0.420, and **leaves none untestable**. `HALLMARK_HYPOXIA` moves from
+a floor of 0.88 to 0.51 and `GOBP_BLOOD_VESSEL_MORPHOGENESIS` from infinite to
+0.51.
+
+The pre-registration froze *which genes* (§8.1 of the protocol) and *which null
+models* (§7.4). It did not specify how to combine genes into a score; the
+unweighted average was an implementation choice inherited from convention. We
+report the pre-registered construction as primary throughout and the
+reliability-selected alternative alongside it.
 
 ### 3.3 Positive controls
 
@@ -283,16 +352,17 @@ however, clears the competitive null (*p* = 0.09 and 0.15) — see §3.4.
 
 Across 120 pipelines and both null models:
 
-| Gene set | Target | ρ (median) | IQR | sign | spin-sig | competitive *p* | resolvable |
+| Gene set | Target | ρ (median) | IQR | sign | spin-sig | competitive *p* | floor |
 |---|---|---|---|---|---|---|---|
-| pericyte/mural | baseline OEF | **−0.391** | [−0.411, −0.359] | 100% | **86%** | **0.0004** | yes |
-| HALLMARK_ANGIOGENESIS | baseline OEF | −0.355 | [−0.413, −0.289] | 100% | 30% | **0.0002** | yes |
-| astrocyte | overshoot | +0.256 | [+0.224, +0.286] | 100% | 15% | **0.007** | marginal |
-| glucose/lactate transport | extraction | +0.229 | [+0.180, +0.277] | 100% | 27% | 0.060 | no |
-| HALLMARK_OXPHOS | baseline OEF | −0.203 | [−0.235, −0.172] | 100% | 0% | 0.107 | no |
+| pericyte/mural | baseline OEF | **−0.391** | [−0.411, −0.359] | 100% | **86%** | **0.0004** | 0.330 |
+| HALLMARK_ANGIOGENESIS | baseline OEF | −0.355 | [−0.413, −0.289] | 100% | 30% | **0.0002** | 0.323 |
+| astrocyte | overshoot | +0.256 | [+0.224, +0.286] | 100% | 15% | **0.007** | 0.535 |
+| glucose/lactate transport | extraction | +0.229 | [+0.180, +0.277] | 100% | 27% | 0.060 | 0.405 |
+| HALLMARK_OXPHOS | baseline OEF | −0.203 | [−0.235, −0.172] | 100% | 0% | 0.107 | 0.516 |
 
-**Of the three resolvable tests, one matches its pre-registered direction, one
-contradicts it, and one had no direction specified.** Pericyte/mural → baseline
+**Of the three effects clearing the spin threshold, one matches its
+pre-registered direction, one contradicts it, and one had no direction
+specified.** Pericyte/mural → baseline
 OEF is negative as pre-specified. HALLMARK_ANGIOGENESIS → baseline OEF was
 pre-registered as *positive* and is **−0.355** — the strongest competitive-null
 result in the study, in the wrong direction. Astrocyte → overshoot carried no
@@ -309,7 +379,8 @@ status of H1 is weaker than the effect sizes alone suggest.
 The pericyte/mural → baseline OEF association is the clearest result. It is
 negative as pre-specified; sign-consistent across all 240 tests spanning 120
 pipelines; spatially significant in 86%; and it passes the competitive null decisively (*z* = −3.49).
-Its implied true effect (0.526) comfortably exceeds its floor (0.330).
+Its detectability floor is 0.330, among the lowest in the design: pericyte/mural
+is a small, spatially coherent set, so the averaged construction measures it well.
 
 **It does not survive FDR correction across the 55-way gene-set × target family
 (minimum adjusted *p* = 0.130).** We report it as a robust, directionally
@@ -377,13 +448,14 @@ limiting path is b.
 
 But §3.2 forbids reading that as absence:
 
-| outcome | path b | ceiling | implied true \|ρ\| | floor |
+| outcome | path b | ceiling | \|path b\| ÷ ceiling | floor |
 |---|---|---|---|---|
 | extraction | −0.217 | 0.752 | 0.289 | 0.331 |
 | overshoot | +0.057 | 0.763 | 0.075 | 0.313 |
 | coupling angle | +0.141 | 0.834 | 0.169 | 0.301 |
 
-Every implied true effect falls below the floor. The discordance maps are the
+Every path-b estimate, divided by its ceiling, falls below the floor — that is,
+none reaches the size the test could have resolved. The discordance maps are the
 power-limiting term (0.579, 0.595) against baseline OEF's 0.978. We therefore
 report that **a large mediator→outcome effect (|ρ| ≳ 0.33) is excluded; a moderate
 one is not.**
@@ -474,12 +546,16 @@ al., 2010; Iadecola, 2017), so a relationship between mural-cell expression and
 steady-state oxygen extraction is mechanistically unsurprising. The surprise is
 where it stops.
 
-It stops at the measurement, not at the biology. Extraction-mode discordance admits
-no resolvable gene-set test in this dataset, and every mediation path-b estimate
-lies below its floor. The bottleneck is not the transcriptomic side — AHBA gene
-sets with panel reliability above ~0.55 support resolvable tests — but the
-discordance maps, whose split-half reliability of ~0.58 caps the attenuation
-ceiling near 0.75 and pushes the floor above ρ ≈ 0.55 for most gene sets.
+It stops at the measurement, not at the biology. Extraction-mode discordance has
+the highest median floor of the three outcomes (0.522), and every mediation
+path-b estimate lies below its floor.
+
+The bottleneck is mostly the **gene** side, not the imaging: 28 of 33 pairings are
+bound by gene-map reliability, against brain maps measured at 0.96–0.99. More
+subjects would not have rescued them. And a substantial part of that gene-side
+limit is the estimator rather than the atlas — averaging a large set into one map
+cancels its signal (§3.2.1), and scoring the same genes in pieces removes every
+untestable pairing in the design.
 
 This is, we think, the more useful contribution. A bare null tells the field
 nothing about whether to try again. A null accompanied by the reliability at which
@@ -593,16 +669,40 @@ Atlas is described in Hawrylycz et al. (2012).
    it changed the paper's central claim from an absence to a bound. It is
    descriptive of the design rather than a test, and uses no outcome information
    beyond reliabilities computed in Phase 0.
+5. **A `resolvable` criterion is withdrawn.** An earlier version of §3.2 called a
+   test resolvable when |ρ| ÷ ceiling exceeded threshold ÷ ceiling. The ceiling
+   cancels, so the criterion was identical to |ρ| ≥ threshold — the significance
+   test relabelled — and its headline, that the resolvable tests were exactly
+   those passing both nulls, was a tautology that could not have come out
+   otherwise. We now report detectability floors alone, which use no outcome
+   information. The affected claims are removed rather than restated, and
+   `scripts/check_paper_numbers.py` fails if the withdrawn phrasing reappears.
+6. **Construction selection (§3.2.1) is disclosed, not pre-registered.** The
+   protocol froze which genes (§8.1) and which null models (§7.4) but did not
+   specify how genes are combined into a score; the unweighted average was an
+   inherited convention. Reliability under alternative constructions is computed
+   from expression data alone and the selection never consults an outcome, so it
+   cannot be a forking path — but it was chosen after the primary results were
+   seen, and the pre-registered construction remains primary throughout.
+7. **One frozen gene set never ran.** `mitochondrial_density_proxy` is declared in
+   `config/genesets.yaml` by HGNC family prefixes rather than an explicit gene
+   list, and the loader silently keeps only sets with an explicit list. It
+   therefore appears in no result and in no error. It was the only small curated
+   set addressing H1's oxidative-phosphorylation arm, which was consequently
+   tested only through the 200-gene HALLMARK set — the construction §3.2.1 shows
+   to be least reliable. Phase 0d now reports declared-but-absent sets.
 
 ## Figure captions
 
-**Figure 1. What this design can resolve.** (**A**) Implied true effect (observed
-ρ ÷ attenuation ceiling) against the detectability floor for all 33 gene-set ×
-outcome tests. Points above the diagonal are resolvable; three are, labelled with
-leader lines. Colour denotes outcome. (**B**) Gene-set panel reliability across
-AHBA donors — the limiting term in every test a set enters. Blue ≥ 0.55;
-vermillion ≤ 0. `GOBP_BLOOD_VESSEL_MORPHOGENESIS` has negative reliability and is
-untestable against any map at any effect size.
+**Figure 1. What this design can detect.** (**A**) Detectability floor — the
+smallest *true* |ρ| a test could resolve — against the effect actually observed,
+for all 33 gene-set × outcome tests. The two axes are independent: the floor is a
+property of the design and does not use the observation. Dashed line, spin-test
+threshold; shading, plausibility bands; labelled points cleared the threshold.
+Colour denotes outcome. (**B**) Gene-set panel reliability across AHBA donors, the
+limiting term in 28 of 33 tests. Blue ≥ 0.55; vermillion ≤ 0.
+`GOBP_BLOOD_VESSEL_MORPHOGENESIS` has negative reliability *as an averaged score*;
+its individual genes replicate (§3.2.1).
 
 **Figure 2. The primary effect.** (**A**) Spearman ρ between pericyte/mural
 expression and baseline OEF across 240 tests (120 preprocessing pipelines × 2

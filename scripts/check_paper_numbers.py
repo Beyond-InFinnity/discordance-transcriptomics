@@ -32,6 +32,28 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 R = ROOT / "results"
 
+# Phrases that must NOT appear in the draft, because they assert a claim the
+# analysis no longer supports.
+#
+# Presence checks are substring searches, which are fine for a distinctive
+# number and useless for a bare word: a claim of "3 untestable tests" expecting
+# "three" matches a sentence about "three resolvable tests" and reports ok. A
+# positive check cannot catch a framing that is wrong; only a negative one can.
+#
+# The `resolvable` criterion was |rho|/ceiling >= spin/ceiling, which cancels to
+# |rho| >= spin -- the significance test wearing the costume of a power analysis.
+# Its headline, "the resolvable tests are exactly the ones passing both nulls",
+# was therefore a tautology and could not have come out otherwise. See
+# scripts/p0d_resolvable_tests.py.
+FORBIDDEN = [
+    "are exactly the three that return associations",
+    "those three are exactly the three returning associations",
+    "Three of 33 tests are resolvable",
+    "call a test *resolvable*",
+    "resolvable tests |",
+    "| implied true |",
+]
+
 
 def _csv(name: str) -> pd.DataFrame:
     return pd.read_csv(R / name)
@@ -78,37 +100,30 @@ def _macaque(target: str) -> float:
 def _resolvability() -> dict:
     """Recompute §3.2: which gene-set x outcome tests the design can resolve.
 
-    The paper's central table. Joins gene-set panel reliability and map
-    reliability into an attenuation ceiling, divides the observed effect by it to
-    get the implied true effect, and compares that against the detectability
-    floor. Recomputed here rather than trusted, because it is the claim the
-    manuscript's structure now rests on.
+    The paper's central table: a detectability floor per pairing, plus which side
+    of the attenuation product binds it. Read from Phase 0d rather than
+    recomputed -- see the comment below for why recomputation was the problem.
     """
     import math
 
-    fl = _csv("p0c_detectability_floor.csv")
-    s4 = _csv("p4_genesets_summary.csv")
-    label = {
-        "discordance_extraction": "discordance (extraction)",
-        "discordance_overshoot": "discordance (overshoot)",
-        "baseline_oef": "baseline OEF",
+    # Read Phase 0d rather than recomputing. This function used to derive
+    # `resolvable` as |rho|/ceiling >= spin/ceiling -- an identity that cancels
+    # to |rho| >= spin, i.e. the significance test. It was the third independent
+    # copy of that formula in the repo, which is why fixing p0d alone would not
+    # have fixed the paper's numbers.
+    d = _csv(sorted(R.glob("p0d_resolvable_tests_*.csv"))[0].name)
+    finite = d[d.detectability_floor.apply(math.isfinite)]
+    return {
+        "total": len(d),
+        "untestable": int((~d.detectability_floor.apply(math.isfinite)).sum()),
+        "min_floor": float(finite.detectability_floor.min()),
+        "median_floor": float(finite.detectability_floor.median()),
+        "n_binding_genes": int((d.binding_side == "genes").sum()),
+        "per_outcome": {
+            k: round(float(g.detectability_floor.median()), 4)
+            for k, g in finite.groupby("outcome")
+        },
     }
-    n_total = n_resolvable = 0
-    per_outcome: dict[str, list[int]] = {k: [0, 0] for k in label}
-    for _, r in s4.iterrows():
-        if r.target not in label:
-            continue
-        m = fl[(fl.gene_set == r.gene_set) & (fl.brain_map == label[r.target])]
-        if not len(m):
-            continue
-        ceil = float(m.attenuation_ceiling.iloc[0])
-        floor = float(m.detectable_true_rho.iloc[0])
-        n_total += 1
-        per_outcome[r.target][1] += 1
-        if ceil > 0 and not math.isnan(ceil) and abs(r.rho_median) / ceil >= floor:
-            n_resolvable += 1
-            per_outcome[r.target][0] += 1
-    return {"total": n_total, "resolvable": n_resolvable, "per_outcome": per_outcome}
 
 
 def build_claims() -> list[tuple[str, float, str]]:
@@ -130,24 +145,24 @@ def build_claims() -> list[tuple[str, float, str]]:
     rel = _csv("p0c_geneset_reliability.csv").set_index("gene_set")
 
     return [
-        # --- what the design can resolve (§3.2, the paper's central table) ---
+        # --- what the design can detect (§3.2, the paper's central table) ---
+        # Floors, not a resolvability count: the count was circular. See
+        # p0d_resolvable_tests.py.
         ("total gene-set x outcome tests", float(res["total"]), "33"),
-        ("resolvable tests", float(res["resolvable"]), "three"),
+        ("tests untestable at any effect size", float(res["untestable"]), "three"),
+        ("smallest detectability floor", res["min_floor"], "0.30"),
+        ("median floor vs baseline OEF", res["per_outcome"]["baseline_oef"], "0.39"),
         (
-            "resolvable vs baseline OEF",
-            float(res["per_outcome"]["baseline_oef"][0]),
-            "2 / 11",
+            "median floor vs overshoot",
+            res["per_outcome"]["discordance_overshoot"],
+            "0.49",
         ),
         (
-            "resolvable vs overshoot",
-            float(res["per_outcome"]["discordance_overshoot"][0]),
-            "1 / 11",
+            "median floor vs extraction",
+            res["per_outcome"]["discordance_extraction"],
+            "0.52",
         ),
-        (
-            "resolvable vs extraction",
-            float(res["per_outcome"]["discordance_extraction"][0]),
-            "0 / 11",
-        ),
+        ("tests limited by the gene side", float(res["n_binding_genes"]), "28"),
         (
             "GOBP set has negative reliability",
             float(rel.loc["GOBP_BLOOD_VESSEL_MORPHOGENESIS", "reliability_panel"]),
@@ -290,17 +305,29 @@ def main() -> int:
         if not present:
             missing.append((label, want, value))
 
+    stale = [p for p in FORBIDDEN if p in text]
+    if stale:
+        print(f"\n  {'-' * 70}")
+        print("  STALE FRAMING — the draft still asserts the circular criterion:")
+        for p in stale:
+            print(f"    · {p!r}")
+        print("    p0d no longer computes `resolvable`; it reports detectability")
+        print("    floors. These passages describe an analysis that no longer exists.")
+
     print(f"\n{'=' * 74}")
+    if stale:
+        print(f"VERDICT: {len(stale)} stale passage(s) in the draft. FIX THESE FIRST —")
+        print("  positive number checks below cannot detect a wrong framing.\n")
     if missing:
         print(f"VERDICT: {len(missing)} claim(s) not found in the draft.\n")
         for label, want, value in missing:
             print(f"  {label}: results/ says {value:.4g}, expected the draft to")
             print(f"    contain {want!r}. Either the draft is stale or the")
             print("    formatting changed -- check, do not just edit the number.")
-    else:
+    elif not stale:
         print("VERDICT: every checked number in the draft matches results/.")
     print(f"{'=' * 74}\n")
-    return 1 if missing else 0
+    return 1 if (missing or stale) else 0
 
 
 if __name__ == "__main__":

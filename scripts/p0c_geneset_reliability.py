@@ -103,14 +103,65 @@ def extract_donor(donor: str, dest: Path, parc: str, density: str, probe: str) -
         Path(worker).unlink(missing_ok=True)
 
 
-def set_score(expr: pd.DataFrame, genes: list[str], n_parcels: int) -> np.ndarray | None:
-    """Mean z-scored expression of a set's genes, per parcel."""
+def set_score(
+    expr: pd.DataFrame, genes: list[str], n_parcels: int, min_genes: int = 3
+) -> np.ndarray | None:
+    """Mean z-scored expression of a set's genes, per parcel.
+
+    ``min_genes`` is 3 for the set score actually used by Phase 4, and 1 when
+    scoring a single gene or a small chunk for the construction sweep below.
+    """
     present = [g for g in genes if g in expr.columns]
-    if len(present) < 3:
+    if len(present) < min_genes:
         return None
     sub = expr[present].iloc[:n_parcels]
     z = (sub - sub.mean()) / sub.std()
     return z.mean(axis=1).to_numpy()
+
+
+def construction_reliability(
+    mats: list[pd.DataFrame],
+    genes: list[str],
+    n_parcels: int,
+    chunk: int,
+    seed: int,
+    n_reps: int = 10,
+) -> float:
+    """Panel reliability if the set were scored in chunks of ``chunk`` genes.
+
+    Averaging k genes into one map only *helps* when their true spatial patterns
+    resemble each other more than their measurement noise does. In AHBA every
+    gene is measured from the same tissue samples, so the noise is shared while
+    the signal is shared only where genes genuinely co-localise. For large
+    pathway sets that condition fails and the average cancels signal faster than
+    noise — so scoring the set in smaller pieces recovers reliability, with
+    per-gene (``chunk=1``) as the limit.
+
+    This measures how much. Chunk membership is randomised and averaged over
+    ``n_reps`` partitions so one lucky split cannot decide the answer; a partial
+    trailing chunk is dropped to keep the chunk size constant, since reliability
+    depends on it.
+    """
+    present = [g for g in genes if g in mats[0].columns]
+    if len(present) < max(chunk, 1):
+        return float("nan")
+    rng = np.random.default_rng(seed)
+    reps = 1 if chunk >= len(present) else n_reps
+    vals = []
+    for _ in range(reps):
+        perm = list(rng.permutation(present))
+        for i in range(0, len(perm), chunk):
+            piece = perm[i : i + chunk]
+            if len(piece) < chunk:
+                continue
+            scores = [set_score(m, piece, n_parcels, min_genes=1) for m in mats]
+            scores = [s for s in scores if s is not None]
+            if len(scores) < 2:
+                continue
+            r_pair, _ = mean_pairwise(scores)
+            if np.isfinite(r_pair):
+                vals.append(spearman_brown(r_pair, factor=len(scores)))
+    return float(np.mean(vals)) if vals else float("nan")
 
 
 def mean_pairwise(scores: list[np.ndarray]) -> tuple[float, int]:
@@ -191,6 +242,27 @@ def main() -> int:
         # reliability of a one-donor map. The panel averages k donors, so the
         # length ratio is k.
         r_panel = spearman_brown(r_pair, factor=len(scores))
+
+        # What the same genes would support under a less destructive
+        # construction. reliability_panel is the number the pre-registered
+        # analysis actually had; these are what it could have had.
+        ms = list(mats.values())
+        r_chunk5 = construction_reliability(ms, spec["genes"], n_parcels, 5, cfg.seed)
+        r_pergene = construction_reliability(ms, spec["genes"], n_parcels, 1, cfg.seed)
+
+        # Which construction this set should have used. Chosen on reliability
+        # alone -- a property of the expression data -- and never on any
+        # outcome, so it is a measurement decision rather than a forking path.
+        options = {
+            "whole_set": r_panel,
+            "chunks_of_5": r_chunk5,
+            "per_gene": r_pergene,
+        }
+        best = max(
+            (k for k, v in options.items() if v is not None and np.isfinite(v)),
+            key=lambda k: options[k],
+            default="whole_set",
+        )
         rows.append(
             {
                 "gene_set": name,
@@ -199,6 +271,11 @@ def main() -> int:
                 "n_pairs": n_pairs,
                 "reliability_one_pair": r_pair,
                 "reliability_panel": r_panel,
+                "reliability_panel_chunk5": r_chunk5,
+                "reliability_panel_pergene": r_pergene,
+                "best_construction": best,
+                "reliability_panel_best": options[best],
+                "gain_best_over_whole": options[best] - r_panel,
             }
         )
 
@@ -211,6 +288,12 @@ def main() -> int:
             for _, b in dyn.iterrows():
                 rg = max(g.reliability_panel, 0.0)
                 ceiling = float(np.sqrt(b.signal_fraction * rg))
+                # The same pairing under a per-gene construction: same genes,
+                # same brain map, same nulls — only the aggregation changes.
+                # The gap between the two floors is the part of the design's
+                # blindness that was self-inflicted rather than imposed by data.
+                rg_best = max(float(g.reliability_panel_best or 0.0), 0.0)
+                ceil_best = float(np.sqrt(b.signal_fraction * rg_best))
                 floors.append(
                     {
                         "gene_set": g.gene_set,
@@ -220,6 +303,12 @@ def main() -> int:
                         "attenuation_ceiling": ceiling,
                         "detectable_true_rho": (
                             float(spin_threshold / ceiling) if ceiling > 0 else np.inf
+                        ),
+                        "best_construction": g.best_construction,
+                        "reliability_genes_best": rg_best,
+                        "attenuation_ceiling_best": ceil_best,
+                        "detectable_true_rho_best": (
+                            float(spin_threshold / ceil_best) if ceil_best > 0 else np.inf
                         ),
                     }
                 )
