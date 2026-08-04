@@ -32,6 +32,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 R = ROOT / "results"
 
+# U+2212, the typographic minus the draft uses for signed effects.
+MINUS = "\u2212"
+
 # Phrases that must NOT appear in the draft, because they assert a claim the
 # analysis no longer supports.
 #
@@ -298,11 +301,41 @@ def main() -> int:
     print(f"\n{'=' * 74}\nPAPER NUMBERS vs results/\n{'=' * 74}")
     print(f"  draft: {args.draft}   claims: {len(claims)}\n")
     missing = []
+    # Two questions, and the second one is the one that matters.
+    #
+    # Presence alone -- "does this string appear in the draft" -- passed every
+    # claim the night the detectability table went from 33 tests to 44: it found
+    # "33" in the prose, never compared it to the computed 44, and reported ok.
+    # A gate that verifies a number is *mentioned* rather than *correct* would
+    # sign off on a paper contradicting its own results, which is exactly the
+    # drift this file exists to prevent.
+    #
+    # So: the expected string must appear in the draft AND must equal the
+    # recomputed value, to the precision the draft states it at. Comparison is on
+    # magnitude because the draft writes signed effects with a typographic minus
+    # and the artifacts do not.
     for label, value, want in claims:
         present = want in text
-        mark = "ok  " if present else "MISS"
-        print(f"  {mark}  {label:<40} {want:>10}   (computed {value:.4g})")
+        agrees: bool | None = None
+        try:
+            target = float(want.replace(",", "").replace(MINUS, "-"))
+        except ValueError:
+            target = None  # a word, e.g. "three" -- presence is all we can check
+        if target is not None:
+            dp = len(want.split(".")[1]) if "." in want else 0
+            tol = 0.5 * 10**-dp + 1e-9
+            agrees = abs(abs(target) - abs(float(value))) <= tol
+
         if not present:
+            mark = "MISS"
+        elif agrees is False:
+            mark = "DRIFT"
+        elif agrees is None:
+            mark = "ok? "  # unverifiable: the claim is a word, not a number
+        else:
+            mark = "ok  "
+        print(f"  {mark}  {label:<40} {want:>10}   (computed {value:.4g})")
+        if not present or agrees is False:
             missing.append((label, want, value))
 
     stale = [p for p in FORBIDDEN if p in text]
@@ -319,11 +352,13 @@ def main() -> int:
         print(f"VERDICT: {len(stale)} stale passage(s) in the draft. FIX THESE FIRST —")
         print("  positive number checks below cannot detect a wrong framing.\n")
     if missing:
-        print(f"VERDICT: {len(missing)} claim(s) not found in the draft.\n")
+        print(
+            f"VERDICT: {len(missing)} claim(s) missing from or contradicted by the draft.\n"
+        )
         for label, want, value in missing:
-            print(f"  {label}: results/ says {value:.4g}, expected the draft to")
-            print(f"    contain {want!r}. Either the draft is stale or the")
-            print("    formatting changed -- check, do not just edit the number.")
+            print(f"  {label}: results/ says {value:.4g}, draft says {want!r}.")
+            print("    Either the draft is stale or the formatting changed --")
+            print("    check which, do not just edit the number to match.")
     elif not stale:
         print("VERDICT: every checked number in the draft matches results/.")
     print(f"{'=' * 74}\n")

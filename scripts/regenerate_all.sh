@@ -58,6 +58,13 @@ echo "code state: $(git rev-parse --short HEAD) (clean)"
 # the run. audit_provenance.py then verifies every artifact was written after
 # that token, which makes foreign files detectable rather than invisible.
 RUN_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%dT%H%M%SZ)"
+# Own the completion marker rather than trusting the caller to append it.
+# pull_results.sh treats regen.done as "this run finished and may be pulled",
+# and a wrapper of the form `regenerate_all.sh; touch regen.done` -- semicolon,
+# not && -- writes it even when the run aborts. That happened: a crash at step
+# 17 of 18 was marked complete. set -e means anything below this line failing
+# skips the touch at the end, so the marker now means what it says.
+rm -f regen.done
 rm -rf results && mkdir -p results
 printf '%s\n' "$RUN_ID" > results/.run_id
 date -u +%Y-%m-%dT%H:%M:%SZ > results/.run_started
@@ -184,6 +191,7 @@ step "Paper numbers vs results/ (report only)" bash -c \
 
 step "Provenance audit (GATE)"                        $PY scripts/audit_provenance.py
 
+touch regen.done
 echo ""
 echo "=============================================================="
 echo "  REGENERATION COMPLETE — $(date +%H:%M:%S)"
