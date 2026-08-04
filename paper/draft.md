@@ -513,9 +513,14 @@ therefore a demonstrated contributor and not a sufficient explanation, and we
 still draw no biological inference from a sign-free depletion.
 
 The control matters more than the result it was built to check. **Pericyte/mural
-survives the matched null** (*p* = 0.013), attenuating by more in proportional
-terms than the depletions do — those four vascular markers are somewhat smooth
-themselves — but clearing a null the published one does not impose.
+survives the matched null** (*p* = 0.013), clearing a null the published one does
+not impose. Its *z* falls further than the depletions' do, from +7.53 to +5.62,
+and not because those genes are smooth: their Moran's I is 0.273 against 0.268
+for the genome (*p* = 0.94), indistinguishable. The attenuation is mechanical.
+Stratifying on a second variable splits the draw pool into up to fifty joint
+cells, and for a four-gene set that makes the null lumpier and wider — the same
+small-set behaviour that made its *z* untrustworthy above, which is why the
+permutation *p*, moving only 0.007 to 0.013, is the quantity to read.
 
 **Glycolytic enzymes → extraction-mode discordance (*p* = 0.044) is what chance
 looks like.** It sits on H1's glycolytic arm, against the outcome the hypothesis
