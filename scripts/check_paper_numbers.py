@@ -102,6 +102,13 @@ def _calib(target: str, col: str = "pct_p_lt_05") -> float:
     return float(d[d.target == target][col].iloc[0])
 
 
+def _p4c(gene_set: str, target: str, col: str) -> float:
+    """Per-gene arm, set-level competitive result (§3.4.1)."""
+    d = _csv("p4c_pergene_summary_schaefer200x7.csv")
+    m = d[(d.gene_set == gene_set) & (d.target == target)]
+    return float(m[col].iloc[0])
+
+
 def _macaque(target: str) -> float:
     d = _csv("x1_macaque_vascular.csv")
     return float(d[d.target == target].rho.iloc[0])
@@ -178,6 +185,27 @@ def build_claims() -> list[tuple[str, float, str]]:
             "0.52",
         ),
         ("tests limited by the gene side", float(res["n_binding_genes"]), "38"),
+        # --- per-gene arm (§3.4.1) -------------------------------------------
+        (
+            "per-gene: pericyte -> OEF competitive p",
+            _p4c("pericyte_mural", "baseline_oef", "p_competitive"),
+            "0.006",
+        ),
+        (
+            "per-gene: pericyte mean %spin-sig",
+            _p4c("pericyte_mural", "baseline_oef", "mean_pct_spin_sig"),
+            "18.54",
+        ),
+        (
+            "per-gene: OXPHOS -> coupling angle z",
+            _p4c("HALLMARK_OXIDATIVE_PHOSPHORYLATION", "coupling_angle", "z_competitive"),
+            "2.94",
+        ),
+        (
+            "per-gene: glycolytic enzymes -> extraction p",
+            _p4c("glycolytic_enzymes", "discordance_extraction", "p_competitive"),
+            "0.044",
+        ),
         # --- spin-test calibration (§2.5) ------------------------------------
         ("calibration: baseline OEF", _calib("baseline_oef"), "0.82"),
         ("calibration: coupling angle", _calib("coupling_angle"), "2.06"),

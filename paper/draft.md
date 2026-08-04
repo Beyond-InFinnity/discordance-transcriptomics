@@ -37,7 +37,10 @@ improves 24 of 44 pairings and leaves none untestable.
 
 **Pericyte and mural-cell gene expression predicts baseline oxygen extraction
 fraction (OEF)** (ρ = −0.391, sign-consistent across 100% of 240 tests, spatially
-significant in 86%, competitive *p* = 0.0004), in the pre-registered direction,
+significant in 86%, competitive *p* = 0.0004) — and survives when the same genes
+are tested individually and aggregated statistically instead of averaged into one
+map (competitive *p* = 0.006), so it does not depend on the construction §3.2.1
+shows to be the weaker measurement. It is in the pre-registered direction,
 strengthening when the unimodal–transmodal hierarchy is partialled out. It does
 not survive family-wide correction (minimum adjusted *p* = 0.130). Its floor is
 0.330 and it is a small, spatially coherent set, so it is among the few tests the
@@ -431,6 +434,80 @@ gene set special". It is sensitive to set size and stability structure that smal
 curated panels do not share with random draws. We therefore treat *p* = 0.0004 as
 evidence that the effect is not a generic property of any stability-matched set of
 that size, not as confirmatory significance.
+
+### 3.4.1 The same sets, aggregated per gene
+
+§3.2.1 shows the averaged score is the less reliable measurement for every large
+set. This re-runs H1 with the aggregation moved: each gene tested individually
+against each target, and the set-level question — are this set's genes
+collectively significant more often than size- and stability-matched random sets?
+— asked of the resulting statistics rather than of an averaged map. Same frozen
+sets, same targets, same two nulls. 15,563 genes × 120 pipelines × 4 targets,
+7.3 million spin tests.
+
+The construction was not pre-registered either way (Appendix A), so this is
+reported *beside* §3.4, not in place of it. Five of 44 set × target tests clear
+the competitive null, against four of 55 in the averaged arm:
+
+| gene set | target | *k* | mean % spin-sig | *z* | *p* |
+|---|---|---|---|---|---|
+| **pericyte/mural** | baseline OEF | 4 | 18.54 | +7.54 | **0.006** |
+| glycolytic enzymes | extraction | 6 | 31.32 | +1.98 | 0.044 |
+| HALLMARK_OXPHOS | coupling angle | 199 | 0.33 | −2.94 | **0.004** |
+| HALLMARK_OXPHOS | baseline OEF | 199 | 0.01 | −2.13 | 0.032 |
+| HALLMARK_OXPHOS | overshoot | 199 | 4.98 | −2.09 | 0.038 |
+
+**Pericyte/mural → baseline OEF survives the change of construction.** It was
+found by averaging (§3.4, ρ = −0.391, competitive *p* = 0.0004) and is found again
+without averaging. Its four genes reach spin significance 18.5% of the time
+against a target whose genome-wide rate is 0.82% (§2.5) — roughly 23-fold
+enrichment. The two arms share only the genes, the target and the nulls; they
+combine evidence in ways that fail differently, so agreement between them is
+stronger evidence than either alone.
+
+The *z* of +7.54 should be ignored. With four genes the null distribution of a
+matched-set mean is lumpy and heavy-tailed, not Gaussian: a true *z* of 7.54 would
+imply *p* ≈ 5 × 10⁻¹⁴, whereas 60 of 10,000 draws were in fact that extreme. The
+permutation *p* is the honest quantity, which is why the competitive null is
+empirical rather than parametric.
+
+**The three oxidative-phosphorylation entries are depletions, not associations.**
+Negative *z*: those 199 genes reach significance *less* often than matched random
+sets — against baseline OEF, 0.01% versus 0.82% genome-wide. Two reasons not to
+read this as biology. The statistic is deliberately sign-free, so it says these
+genes are unusually *unrelated* to the maps in either direction, whereas H1
+predicts a negative *association* — depletion neither confirms nor refutes it.
+More seriously, the competitive null matches on set size and differential
+stability but **not on spatial autocorrelation**, and a spin test's behaviour
+depends on the smoothness of both maps (§2.5). Oxidative-phosphorylation genes are
+housekeeping-adjacent and strongly co-expressed; if their maps are systematically
+smoother than average, their nulls are systematically wider and they will appear
+depleted for reasons unconnected to oxygen. Fulcher et al. (2021) document the
+mirror image — categories with high spatial autocorrelation acquire inflated
+false-positive rates in gene-category enrichment. We report the depletion as a
+methodological observation and draw no biological inference from it; an
+autocorrelation-matched null would be required, and we did not run one.
+
+**Glycolytic enzymes → extraction-mode discordance (*p* = 0.044) is what chance
+looks like.** It sits on H1's glycolytic arm, against the outcome the hypothesis
+concerns, and the averaged score found nothing there (ρ = −0.024) — so the
+construction change turned a null into a nominal hit, which is the mechanism of
+§3.2.1 working as described. It is also entirely expected under the null: across
+44 tests at α = 0.05 one expects ≈2.2, and this is one. It does not survive
+family-wide correction and is not evidence for H1.
+
+`macaque_vascular_CONTROL` is excluded from this arm. Its map has 83 of 100
+parcels, so rotations pull unobserved parcels into the analysis window and only 2
+of 10,000 surrogate draws are complete. The vectorised sweep has no paired-
+observation path for ragged surrogates; §3.3 scores that control through
+`corr_with_null`, which does.
+
+**What this arm changes.** The mediator arm of H1 now rests on two analyses that
+combine evidence differently and agree. The outcome arm gains one nominal hit
+consistent with chance, on a target where 12% of all genes clear the spin
+threshold under the null. The conclusion of §3.4 is unaltered; what changes is
+that it no longer depends on a construction §3.2.1 shows to be the weaker
+measurement.
 
 ### 3.5 Hierarchy control
 
