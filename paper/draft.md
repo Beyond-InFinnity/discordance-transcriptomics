@@ -22,8 +22,8 @@ stability-matched competitive nulls throughout. We first asked what effect size
 each test could detect at all. For every gene-set × outcome pairing we computed a
 **detectability floor** — the smallest true correlation resolvable given the
 measured reliability of both maps. **No test in the pre-registered design could
-resolve a true effect below |ρ| = 0.30**, three were untestable at any effect
-size, and 28 of 33 were limited by the gene side rather than the imaging.
+resolve a true effect below |ρ| = 0.30**, four were untestable at any effect
+size, and 38 of 44 were limited by the gene side rather than the imaging.
 
 That limit is substantially **self-imposed**. The standard construct — averaging a
 gene set's members into one spatial score — cancels signal whenever the genes'
@@ -33,7 +33,7 @@ in smaller pieces recovers reliability: `HALLMARK_HYPOXIA` moves from a panel
 reliability of 0.126 to 0.384 and a floor of 0.88 to 0.51, and
 `GOBP_BLOOD_VESSEL_MORPHOGENESIS` from untestable to a floor of 0.51. Choosing the
 best-measuring construction per set — on reliability alone, never on any outcome —
-improves 18 of 33 pairings and leaves none untestable.
+improves 24 of 44 pairings and leaves none untestable.
 
 **Pericyte and mural-cell gene expression predicts baseline oxygen extraction
 fraction (OEF)** (ρ = −0.391, sign-consistent across 100% of 240 tests, spatially
@@ -263,18 +263,21 @@ individual genes do (§3.2.1), so this is a property of the construct, not of th
 genes.
 
 Combining these with map reliabilities gives a detectability floor for each of the
-33 pairings:
+44 pairings. The coupling angle is included because §7.3 names it the *primary*
+outcome — continuous rather than binarised — and it is the most reliable of the
+three coupling-derived maps:
 
 | outcome | n | median floor | worst |
 |---|---|---|---|
-| baseline OEF | 11 | 0.388 | untestable |
+| baseline OEF | 11 | 0.387 | untestable |
+| coupling angle | 11 | 0.473 | untestable |
 | overshoot-mode discordance | 11 | 0.493 | untestable |
 | extraction-mode discordance | 11 | 0.522 | untestable |
 
 **No test in the design resolves a true effect below |ρ| = 0.30.** Distributed
-across plausibility bands: 17 pairings could detect only moderate-to-large effects
-(floor 0.30–0.50), 9 only large ones (0.50–0.70), 4 sit above 0.70 where no
-spatial correlation between independent modalities is plausibly expected, and 3
+across plausibility bands: 22 pairings could detect only moderate-to-large effects
+(floor 0.30–0.50), 13 only large ones (0.50–0.70), 5 sit above 0.70 where no
+spatial correlation between independent modalities is plausibly expected, and 4
 are untestable at any effect size.
 
 Two consequences follow, and they structure everything below.
@@ -283,7 +286,7 @@ First, **the outcome the hypothesis is about is the one the design interrogates
 worst.** Extraction-mode discordance has the highest median floor, 0.522, against
 a field in which ρ ≈ 0.3 is a strong result.
 
-Second, **the limit is overwhelmingly on the gene side: 28 of 33 pairings are
+Second, **the limit is overwhelmingly on the gene side: 38 of 44 pairings are
 bound by gene-map reliability rather than by the imaging.** Given brain maps of
 0.98 (baseline OEF) against gene-set scores of 0.13–0.67, more subjects would not
 have helped. This is the opposite of where effort in this literature usually goes.
@@ -319,7 +322,7 @@ and LAMP5 mark four distinct interneuron populations with genuinely different
 cortical distributions, and averaging them destroys what each measures.
 
 Selecting the best-measuring construction per set — on reliability alone, with no
-reference to any outcome — improves 18 of 33 pairings, lowers the median floor
+reference to any outcome — improves 24 of 44 pairings, lowers the median floor
 from 0.448 to 0.420, and **leaves none untestable**. `HALLMARK_HYPOXIA` moves from
 a floor of 0.88 to 0.51 and `GOBP_BLOOD_VESSEL_MORPHOGENESIS` from infinite to
 0.51.
@@ -550,7 +553,7 @@ It stops at the measurement, not at the biology. Extraction-mode discordance has
 the highest median floor of the three outcomes (0.522), and every mediation
 path-b estimate lies below its floor.
 
-The bottleneck is mostly the **gene** side, not the imaging: 28 of 33 pairings are
+The bottleneck is mostly the **gene** side, not the imaging: 38 of 44 pairings are
 bound by gene-map reliability, against brain maps measured at 0.96–0.99. More
 subjects would not have rescued them. And a substantial part of that gene-side
 limit is the estimator rather than the atlas — averaging a large set into one map
@@ -589,7 +592,7 @@ showing the two can dissociate.]`
 - **AHBA is 6 adult post-mortem donors** (5 usable), bulk microarray, predominantly
   left hemisphere. A modal brain, not a matched sample. No individual-level
   inference is licensed.
-- **Most tests here were underpowered by construction** (§3.2): 30 of 33 gene-set ×
+- **Most tests here were underpowered by construction** (§3.2): 40 of 44 gene-set ×
   outcome pairings could not resolve an ordinary effect. We report them for
   completeness and weight them accordingly.
 - **One frozen gene set is untestable.** `GOBP_BLOOD_VESSEL_MORPHOGENESIS` has
@@ -696,11 +699,11 @@ Atlas is described in Hawrylycz et al. (2012).
 
 **Figure 1. What this design can detect.** (**A**) Detectability floor — the
 smallest *true* |ρ| a test could resolve — against the effect actually observed,
-for all 33 gene-set × outcome tests. The two axes are independent: the floor is a
+for all 44 gene-set × outcome tests. The two axes are independent: the floor is a
 property of the design and does not use the observation. Dashed line, spin-test
 threshold; shading, plausibility bands; labelled points cleared the threshold.
 Colour denotes outcome. (**B**) Gene-set panel reliability across AHBA donors, the
-limiting term in 28 of 33 tests. Blue ≥ 0.55; vermillion ≤ 0.
+limiting term in 38 of 44 tests. Blue ≥ 0.55; vermillion ≤ 0.
 `GOBP_BLOOD_VESSEL_MORPHOGENESIS` has negative reliability *as an averaged score*;
 its individual genes replicate (§3.2.1).
 

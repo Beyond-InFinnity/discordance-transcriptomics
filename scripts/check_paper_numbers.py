@@ -151,10 +151,11 @@ def build_claims() -> list[tuple[str, float, str]]:
         # --- what the design can detect (§3.2, the paper's central table) ---
         # Floors, not a resolvability count: the count was circular. See
         # p0d_resolvable_tests.py.
-        ("total gene-set x outcome tests", float(res["total"]), "33"),
-        ("tests untestable at any effect size", float(res["untestable"]), "three"),
+        ("total gene-set x outcome tests", float(res["total"]), "44"),
+        ("tests untestable at any effect size", float(res["untestable"]), "four"),
         ("smallest detectability floor", res["min_floor"], "0.30"),
-        ("median floor vs baseline OEF", res["per_outcome"]["baseline_oef"], "0.39"),
+        ("median floor vs baseline OEF", res["per_outcome"]["baseline_oef"], "0.387"),
+        ("median floor vs coupling angle", res["per_outcome"]["coupling_angle"], "0.473"),
         (
             "median floor vs overshoot",
             res["per_outcome"]["discordance_overshoot"],
@@ -165,7 +166,7 @@ def build_claims() -> list[tuple[str, float, str]]:
             res["per_outcome"]["discordance_extraction"],
             "0.52",
         ),
-        ("tests limited by the gene side", float(res["n_binding_genes"]), "28"),
+        ("tests limited by the gene side", float(res["n_binding_genes"]), "38"),
         (
             "GOBP set has negative reliability",
             float(rel.loc["GOBP_BLOOD_VESSEL_MORPHOGENESIS", "reliability_panel"]),
