@@ -172,6 +172,11 @@ step "x3 — autocorrelation-matched null"              $PY scripts/x3_autocorr_
 # against rotated genes is the error rate with nothing else in it. Reads Phase
 # 4c's published table for the side-by-side, so it must follow it.
 step "x4 — null-gene calibration"                     $PY scripts/x4_null_genes.py --max-cells $CELLS
+# What a study would have to measure for this question to be answerable. Pure
+# algebra over Phase 0a/0c reliabilities -- no data, no randomness, seconds --
+# but it belongs in the pipeline so §4's specification carries a manifest like
+# every other number rather than being asserted in prose.
+step "x5 — required reliability"                      $PY scripts/x5_required_reliability.py
 step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
 # Disclosed sensitivity analysis, run every time rather than on request. The
 # pre-registered specification removes only the FIRST connectivity gradient, but

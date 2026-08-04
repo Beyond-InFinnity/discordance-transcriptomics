@@ -17,6 +17,50 @@
    "doi": "10.1038/s41593-025-02132-9",
    "score": 1
   },
+  "autio2025": {
+   "authors": [
+    "Autio JA",
+    "Kimura I",
+    "Ose T",
+    "Matsumoto Y",
+    "Ohno M",
+    "Urushibata Y",
+    "Ikeda T",
+    "Glasser MF",
+    "van Essen DC",
+    "Hayashi T"
+   ],
+   "year": 2025,
+   "title": "Mapping vascular network architecture in primate brain using ferumoxytol-weighted laminar MRI",
+   "journal": "eLife",
+   "volume": "13",
+   "pages": "",
+   "doi": "10.7554/elife.99940",
+   "score": 1
+  },
+  "xu2020": {
+   "authors": [
+    "Xu T",
+    "Nenning K",
+    "Schwartz E",
+    "Hong S",
+    "Vogelstein JT",
+    "Goulas A",
+    "Fair DA",
+    "Schroeder CE",
+    "Margulies DS",
+    "Smallwood J",
+    "Milham MP",
+    "Langs G"
+   ],
+   "year": 2020,
+   "title": "Cross-species functional alignment reveals evolutionary hierarchy within the connectome",
+   "journal": "NeuroImage",
+   "volume": "223",
+   "pages": "117346",
+   "doi": "10.1016/j.neuroimage.2020.117346",
+   "score": 1
+  },
   "markello2021": {
    "authors": [
     "Markello RD",

@@ -122,6 +122,21 @@ def _x3(gene_set: str, target: str, col: str) -> float:
     return float(m[col].iloc[0])
 
 
+def _x5(col: str) -> float:
+    """Required-reliability curve (x5, §4).
+
+    Raises until x5 has run inside a regeneration; the caller turns that into a
+    pending notice.
+    """
+    return float(_man("x5_required_reliability_schaefer200x7")[col])
+
+
+def _x5_curve(effect: float, brain_map: str) -> float:
+    d = _csv("x5_required_reliability_curve_schaefer200x7.csv")
+    m = d[(d.target_effect == effect) & (d.brain_map == brain_map)]
+    return float(m.gene_reliability_needed.iloc[0])
+
+
 def _x4(target: str, col: str) -> float:
     """Null-gene calibration (x4, §2.5).
 
@@ -261,6 +276,36 @@ def build_claims() -> list[tuple[str, float, str]]:
         print("  PENDING  x4 null-gene calibration: artifact not in results/")
         print("           (analysis added after the last regeneration; its claims")
         print("            in §2.5 verify once a regeneration includes x4)\n")
+
+    try:
+        pending += [
+            (
+                "x5: gene reliability needed, rho=0.30 vs OEF",
+                _x5("gene_reliability_needed_for_0_30"),
+                "0.68",
+            ),
+            ("x5: needed at rho=0.20 vs OEF", _x5_curve(0.20, "baseline OEF"), "1.53"),
+            ("x5: needed at rho=0.25 vs OEF", _x5_curve(0.25, "baseline OEF"), "0.98"),
+            (
+                "x5: needed at rho=0.30 vs extraction",
+                _x5_curve(0.30, "discordance (extraction)"),
+                "1.15",
+            ),
+            (
+                "x5: needed at rho=0.20 vs extraction",
+                _x5_curve(0.20, "discordance (extraction)"),
+                "2.59",
+            ),
+            (
+                "x5: sets closed by best construction",
+                _x5("n_sets_closed_by_best_construction"),
+                "none",
+            ),
+        ]
+    except (FileNotFoundError, IndexError, KeyError):
+        print("  PENDING  x5 required-reliability curve: artifact not in results/")
+        print("           (analysis added after the last regeneration; its claims")
+        print("            in §4 verify once a regeneration includes x5)\n")
 
     return [
         *pending,

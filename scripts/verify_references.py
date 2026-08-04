@@ -51,6 +51,11 @@ UA = "discordance-transcriptomics/0.1 (mailto:infinnity12@gmail.com)"
 # wrong title, and the script reports MISMATCH rather than formatting it in.
 REFERENCES: list[tuple[str, str, str]] = [
     ("epp2025", "10.1038/s41593-025-02132-9", "oppose oxygen metabolism"),
+    # The macaque control's two halves: the vascular measurement, and the
+    # cross-species registration that moves it onto the human mesh. They are
+    # separate papers and both were used, so both are cited.
+    ("autio2025", "10.7554/eLife.99940", "vascular network architecture in primate brain"),
+    ("xu2020", "10.1016/j.neuroimage.2020.117346", "Cross-species functional alignment"),
     ("markello2021", "10.7554/eLife.72129", "abagen toolbox"),
     (
         "alexanderbloch2018",
