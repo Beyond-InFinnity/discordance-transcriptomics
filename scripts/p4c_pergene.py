@@ -416,9 +416,15 @@ def main() -> int:
         calib.to_csv(out / f"p4c_pergene_calibration_{parc}.csv", index=False)
         summary.to_csv(out / f"p4c_pergene_summary_{parc}.csv", index=False)
         man.record(
+            # Every file written above must be listed. The calibration table was
+            # written and not declared, so audit_provenance's third check found a
+            # CSV in results/ that no manifest claimed and failed the run 5/6.
+            # An artifact without provenance is exactly what that gate exists to
+            # catch, and it caught it.
             outputs=[
                 str(out / f"p4c_pergene_genes_{parc}.csv"),
                 str(out / f"p4c_pergene_summary_{parc}.csv"),
+                str(out / f"p4c_pergene_calibration_{parc}.csv"),
             ],
             n_cells=len(have),
             n_genes=int(agg.gene.nunique()),
