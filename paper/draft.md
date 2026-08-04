@@ -1,6 +1,6 @@
 # Vascular gene expression predicts cortical oxygen extraction; its link to BOLD–CMRO₂ discordance is below current detection limits
 
-**Working draft.** Every number is generated from `results/` at git `b4cb6d5`,
+**Working draft.** Every number is generated from `results/` at git `e25f745`,
 which passes `scripts/audit_provenance.py` 6/6, and is machine-verified against
 those artifacts by `scripts/check_paper_numbers.py`. Items marked `[TODO]` are
 genuinely outstanding, not placeholders for numbers.
@@ -541,11 +541,11 @@ amount that tracks how strongly smoothness predicted significance for that targe
 | test | *z* (stability) | *p* | *z* (+ autocorrelation) | *p* |
 |---|---|---|---|---|
 | OXPHOS → coupling angle | −2.98 | 0.005 | −2.60 | 0.011 |
-| OXPHOS → baseline OEF | −2.09 | 0.035 | −1.83 | **0.052** |
+| OXPHOS → baseline OEF | −2.09 | 0.035 | −1.82 | **0.054** |
 | OXPHOS → overshoot | −2.06 | 0.039 | −2.00 | 0.044 |
 | **pericyte/mural → baseline OEF** | +7.53 | 0.007 | **+5.62** | **0.013** |
 
-One depletion is fully accounted for — baseline OEF crosses to *p* = 0.052, and it
+One depletion is fully accounted for — baseline OEF crosses to *p* = 0.054, and it
 is the test where the mechanism was strongest. Two survive. Autocorrelation is
 therefore a demonstrated contributor and not a sufficient explanation, and we
 still draw no biological inference from a sign-free depletion.
@@ -823,9 +823,17 @@ consistency; `scripts/check_paper_numbers.py` verifies that the values in this
 manuscript match the artifacts they are drawn from; `scripts/verify_references.py`
 resolves every citation against Crossref.
 
-Results were reproduced **bit-identically across two independent full regenerations
-at different code states** (`37cdbf6`, `b4cb6d5`), including the primary effect, the
-mediation path structure, and every gate.
+**Reproducibility, stated precisely.** Effect estimates reproduce across
+independent full regenerations at different code states: every *z*, ρ and
+reliability in this manuscript is stable to the digits reported. Permutation
+*p*-values are Monte Carlo estimates and are not bit-identical. The one case we
+measured directly moved from 0.0515 to 0.0537 between regenerations — 0.99
+standard errors for a 10,000-draw permutation estimate near *p* = 0.05 — while
+its *z* held at −1.82. The cause is benign and worth naming: the competitive
+null stratifies on a gene pool derived upstream, so a handful of genes entering
+or leaving that pool shifts the quantile bin edges and therefore every draw. We
+report *p* to three decimals because that is what the design supports; the third
+decimal should not be read as stable.
 
 ## 7. Ethics
 

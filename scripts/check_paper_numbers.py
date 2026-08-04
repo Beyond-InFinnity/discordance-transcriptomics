@@ -205,7 +205,7 @@ def build_claims() -> list[tuple[str, float, str]]:
             (
                 "x3: OXPHOS -> OEF, autocorr-matched p",
                 _x3("HALLMARK_OXIDATIVE_PHOSPHORYLATION", "baseline_oef", "p_ds_moran"),
-                "0.052",
+                "0.054",
             ),
             (
                 "x3: pericyte -> OEF, autocorr-matched p",
