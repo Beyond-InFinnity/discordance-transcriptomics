@@ -122,6 +122,12 @@ def _x3(gene_set: str, target: str, col: str) -> float:
     return float(m[col].iloc[0])
 
 
+def _x6(alpha: float, col: str) -> float:
+    """Dissociation simulation (x6, §4)."""
+    d = _csv("x6_dissociation_schaefer200x7.csv")
+    return float(d[d.alpha == alpha][col].iloc[0])
+
+
 def _x5(col: str) -> float:
     """Required-reliability curve (x5, §4).
 
@@ -304,6 +310,20 @@ def build_claims() -> list[tuple[str, float, str]]:
         ]
     except (FileNotFoundError, IndexError, KeyError):
         print("  PENDING  x5 required-reliability curve: artifact not in results/")
+        print("           (analysis added after the last regeneration; its claims")
+        print("            in §4 verify once a regeneration includes x5)\n")
+
+    try:
+        pending += [
+            ("x6: within-brain d, absolute", _x6(0.0, "within_cohens_d"), "2.55"),
+            ("x6: within-brain d, relative", _x6(1.0, "within_cohens_d"), "1.42"),
+            ("x6: between rho, absolute", _x6(0.0, "between_rho"), "0.995"),
+            ("x6: between rho, 90% relative", _x6(0.9, "between_rho"), "0.803"),
+            ("x6: between rho, 95% relative", _x6(0.95, "between_rho"), "0.557"),
+            ("x6: between rho, fully relative", _x6(1.0, "between_rho"), "0.007"),
+        ]
+    except (FileNotFoundError, IndexError, KeyError):
+        print("  PENDING  x6 dissociation simulation: artifact not in results/")
         print("           (analysis added after the last regeneration; its claims")
         print("            in §4 verify once a regeneration includes x5)\n")
 

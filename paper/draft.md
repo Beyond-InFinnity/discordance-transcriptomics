@@ -781,11 +781,40 @@ measurement. A study that improves only the gene side and tests against
 discordance is unfalsifiable by construction, whatever it reports.
 
 We also think Epp et al.'s observation need not imply a between-region signature at
-all. Their result is that discordant voxels differ in baseline OEF; ours asks
-whether parcel-wise variation in OEF predicts parcel-wise variation in discordance.
-A within-condition mechanism can exist without leaving a between-region
-correlation. `[TODO: this is the central interpretive claim and needs a simulation
-showing the two can dissociate.]`
+all, and this is the interpretive claim the paper leans on hardest, so we
+demonstrate it rather than assert it. Their result is that discordant *voxels*
+differ in baseline OEF — a comparison within a brain. Ours asks whether *parcels*
+with higher mean OEF show more discordance — a comparison between regions. The two
+can come apart, and what separates them is what the discordance threshold is
+measured against.
+
+Simulating voxels within parcels, a voxel turns discordant when its OEF exceeds a
+threshold. If that threshold is one physiological value everywhere (**absolute**),
+a parcel with higher mean OEF has more voxels above it and both studies see the
+effect. If it tracks the local neighbourhood — discordant means *high for where
+you sit* (**relative**) — the within-brain effect is undiminished while the
+between-region correlation vanishes. Sweeping between the two:
+
+| threshold | within-brain *d* | between-region ρ | visible to this design |
+|---|---|---|---|
+| fully absolute | 2.55 | +0.995 | yes |
+| 50% relative | 2.25 | +0.987 | yes |
+| 90% relative | 1.60 | +0.803 | yes |
+| 95% relative | 1.51 | +0.557 | **no** |
+| fully relative | 1.42 | −0.007 | no |
+
+**Every regime reproduces their observation.** The within-brain effect stays
+large throughout (*d* = 2.55 to 1.42); only the between-region correlation moves,
+and it moves from +0.995 to zero. A null between regions is therefore evidence
+about which regime holds, not evidence against the within-brain result.
+
+It is also not vacuous. Every regime below 95% relative would have produced a
+between-region correlation this design could resolve, so **our null bounds the
+mechanism at ≳95% local, if it operates at all.** That is a constraint rather
+than an absence — and it is the optimistic version: the simulation carries no
+measurement noise beyond the sampling, and any additional noise attenuates the
+between-region correlation, moves the crossing point down, and weakens what the
+null constrains.
 
 ### 4.1 What would change our minds
 

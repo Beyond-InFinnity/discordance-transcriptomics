@@ -177,6 +177,11 @@ step "x4 — null-gene calibration"                     $PY scripts/x4_null_gene
 # but it belongs in the pipeline so §4's specification carries a manifest like
 # every other number rather than being asserted in prose.
 step "x5 — required reliability"                      $PY scripts/x5_required_reliability.py
+# Whether this study's null can coexist with the result it set out to explain.
+# Pure simulation -- no project data beyond the detectability floor it judges
+# against -- but §4's central interpretive claim rests on it, so it carries a
+# manifest like every other number.
+step "x6 — dissociation simulation"                   $PY scripts/x6_dissociation.py
 step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
 # Disclosed sensitivity analysis, run every time rather than on request. The
 # pre-registered specification removes only the FIRST connectivity gradient, but
