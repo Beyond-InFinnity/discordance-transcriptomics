@@ -55,6 +55,13 @@ FORBIDDEN = [
     "call a test *resolvable*",
     "resolvable tests |",
     "| implied true |",
+    # Withdrawn in favour of x4: reading the genome-wide clearance rate as a
+    # false-positive rate assumes no gene is truly associated with the target.
+    # The rate against independently rotated genes is 3.8-4.3%, so the spread in
+    # the raw rates is association, not error.
+    "under what should be the null",
+    "making the test conservative; a noisy target produces rotations",
+    "roughly **one gene in eight**",
 ]
 
 
@@ -113,6 +120,16 @@ def _x3(gene_set: str, target: str, col: str) -> float:
     d = _csv("x3_autocorr_matched_schaefer200x7.csv")
     m = d[(d.gene_set == gene_set) & (d.target == target)]
     return float(m[col].iloc[0])
+
+
+def _x4(target: str, col: str) -> float:
+    """Null-gene calibration (x4, §2.5).
+
+    Raises FileNotFoundError until x4 has run inside a regeneration; the caller
+    turns that into a "pending" notice rather than a dead gate.
+    """
+    d = _csv("x4_null_genes_schaefer200x7.csv").set_index("target")
+    return float(d.loc[target, col])
 
 
 def _p4c(gene_set: str, target: str, col: str) -> float:
@@ -200,6 +217,50 @@ def build_claims() -> list[tuple[str, float, str]]:
         print("  PENDING  x3 autocorrelation-matched null: artifact not in results/")
         print("           (analysis added after the last regeneration; its claims")
         print("            in §3.4.1 verify once a regeneration includes x3)\n")
+
+    try:
+        pending += [
+            ("x4: rotated genes vs baseline OEF", _x4("baseline_oef", "null_pct"), "4.1"),
+            (
+                "x4: rotated genes vs coupling angle",
+                _x4("coupling_angle", "null_pct"),
+                "3.9",
+            ),
+            (
+                "x4: rotated genes vs overshoot",
+                _x4("discordance_overshoot", "null_pct"),
+                "4.1",
+            ),
+            (
+                "x4: rotated genes vs extraction",
+                _x4("discordance_extraction", "null_pct"),
+                "4.1",
+            ),
+            (
+                "x4: real rate, 12 cells, baseline OEF",
+                _x4("baseline_oef", "real_pct"),
+                "0.68",
+            ),
+            (
+                "x4: real rate, 12 cells, extraction",
+                _x4("discordance_extraction", "real_pct"),
+                "12.67",
+            ),
+            (
+                "x4: rotated-gene median |rho|, baseline OEF",
+                _x4("baseline_oef", "null_median_abs_rho"),
+                "0.112",
+            ),
+            (
+                "x4: real median |rho|, baseline OEF",
+                _x4("baseline_oef", "real_median_abs_rho"),
+                "0.074",
+            ),
+        ]
+    except (FileNotFoundError, IndexError, KeyError):
+        print("  PENDING  x4 null-gene calibration: artifact not in results/")
+        print("           (analysis added after the last regeneration; its claims")
+        print("            in §2.5 verify once a regeneration includes x4)\n")
 
     return [
         *pending,

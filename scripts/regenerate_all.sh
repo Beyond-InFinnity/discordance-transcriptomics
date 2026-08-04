@@ -165,6 +165,13 @@ step "Phase 4c — per-gene arm, full multiverse"       $PY scripts/p4c_pergene.
 # unusually smooth genes can look depleted for reasons unconnected to biology.
 # Reads Phase 4c's per-gene statistics, so it must follow it.
 step "x3 — autocorrelation-matched null"              $PY scripts/x3_autocorr_matched.py --n-draws $NDRAWS
+# Whether Phase 4c's genome-wide clearance rate is a FALSE-POSITIVE rate. It is
+# not: reading it as one assumes no gene is truly associated with the target,
+# which is not a null this field believes. Rotating each gene independently
+# preserves its autocorrelation while destroying its alignment, so the rate
+# against rotated genes is the error rate with nothing else in it. Reads Phase
+# 4c's published table for the side-by-side, so it must follow it.
+step "x4 — null-gene calibration"                     $PY scripts/x4_null_genes.py --max-cells $CELLS
 step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
 # Disclosed sensitivity analysis, run every time rather than on request. The
 # pre-registered specification removes only the FIRST connectivity gradient, but

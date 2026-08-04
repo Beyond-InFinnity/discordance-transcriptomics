@@ -179,37 +179,71 @@ estimate, spatial-null *p*, competitive-null *p*, Benjamini–Hochberg false
 discovery rate (FDR; Benjamini & Hochberg, 1995) across the family, and the
 multiverse distribution.
 
-**Calibration of the spatial null.** A spin test holds the *rotated* map's spatial
-autocorrelation fixed, so how conservative it is depends on the smoothness of
-both maps being compared — a property of the target, not of any gene set. We
-measured it genome-wide, correlating all 15,563 genes against each target across
-the multiverse, ≈1.8 million gene × pipeline tests per target:
+**How often the spatial null fires, and why.** We measured, per target, the
+fraction of the transcriptome clearing a spin test — all 15,563 genes across the
+multiverse, ≈1.8 million gene × pipeline tests each. The rates span fifteen-fold:
 
-| target | split-half reliability | % of genes at spin *p* < 0.05 | mean *p* |
+| target | split-half reliability | real genes, % at spin *p* < 0.05 | rotated genes, % |
 |---|---|---|---|
-| baseline OEF | 0.978 | **0.82** | 0.632 |
-| coupling angle | 0.711 | 2.06 | 0.557 |
-| overshoot-mode discordance | 0.595 | 7.85 | 0.435 |
-| extraction-mode discordance | 0.579 | **12.09** | 0.412 |
+| baseline OEF | 0.978 | **0.82** | 4.1 |
+| coupling angle | 0.711 | 2.06 | 3.9 |
+| overshoot-mode discordance | 0.595 | 7.85 | 4.1 |
+| extraction-mode discordance | 0.579 | **12.09** | 4.1 |
 
-A uniform null would give 5% and a mean *p* of 0.5. The observed rates span
-fifteen-fold and track target reliability monotonically. The mechanism is
-mechanical: a smooth, strongly structured target produces smooth rotations that
-can correlate with a gene by chance, widening the null and making the test
-conservative; a noisy target produces rotations that correlate with little,
-narrowing the null and making it fire too readily.
+It is tempting to read that spread as calibration failure — the test being
+conservative against baseline OEF and firing too readily against extraction-mode
+discordance. **That reading is wrong, and the second column is why.** It requires
+assuming no gene is truly associated with the target, which is not a null this
+field believes: the raw rate confounds the test's error rate with how much of the
+transcriptome a map genuinely engages.
 
-Two consequences. A single gene's spin *p* against extraction-mode discordance is
-not comparable with one against baseline OEF, and neither is comparable with the
-nominal 5% — against the outcome this study is about, roughly **one gene in eight**
-clears the threshold under what should be the null. And this is why no set-level
-claim rests on a spin *p* alone: the competitive null scores size- and
-stability-matched random sets through the same distortion, so it cancels.
+So we measured the error rate directly. Rotating a gene's parcel vector preserves
+its spatial autocorrelation and its value distribution exactly — a rotation is a
+reindexing — while destroying its anatomical alignment. A set of independently
+rotated genes therefore has zero true association *by construction*, and anything
+clearing is a false positive and nothing else. Gene rotations are drawn from a
+seed disjoint from the one generating each target's null; drawn from the same
+set, the observed statistic would be a near-copy of a null draw and the check
+would pass by construction rather than on its merits.
 
-The quantity is not, to our knowledge, reported in this literature, and it cannot
-be estimated from a handful of gene sets — it needs the full panel. We report it
-because a reader cannot otherwise interpret any per-gene spatial *p*-value, here
-or elsewhere.
+**The spin test is well behaved.** Against rotated genes it fires at 3.9–4.1%
+across all four targets, against a nominal 5% — mildly conservative, by about a
+fifth, and essentially flat across maps whose real rates differ fifteen-fold.
+The spread is association, not error.
+
+The mean *p* over all genes says the same thing in a form that does not depend on
+a threshold. A neutral value is 0.5; baseline OEF gives 0.632 and extraction-mode
+discordance 0.412. Genes sit systematically *further* from baseline OEF than its
+own rotations do, and systematically closer to extraction-mode discordance.
+
+Two consequences follow, and they are not the ones this comparison was expected
+to produce. A single gene's spin *p* against extraction-mode discordance is still
+not comparable with one against baseline OEF — but because the *background rate
+of genuine association* differs by an order of magnitude, not because the test
+misbehaves. And the competitive null still handles it either way, since matched
+random sets are scored through the same background; that is why no set-level
+claim here rests on a spin *p* alone.
+
+The third consequence is specific to baseline OEF and cuts in our favour. Real
+genes clear against it at 0.82% while their own rotated counterparts clear at
+4.1%, and their median |ρ| is *lower* than the rotated genes' (0.074 against
+0.112). Real genes do worse than autocorrelation-matched noise built from
+themselves. Gene expression is not isotropic — most genes carry a component of
+the dominant unimodal–transmodal axis — and baseline OEF lies close to orthogonal
+to it, so many of its rotations align with the transcriptome better than the map
+itself does. Every negative result against baseline OEF is therefore stronger
+than a null rather than weaker, and any set that does track it stands against a
+0.82% background rather than a 5% one (§3.4.1).
+
+Companion methodological work applying the identical measurement to 85 published
+`neuromaps` annotations puts the rotated-gene rate at a median of 4.90% (range
+2.81–6.63%) while real-gene rates span 2.02–47.23%, so this is a general property
+of spin-tested transcriptomics rather than of our maps.
+
+The rotated-gene column uses 12 multiverse cells (≈187,000 tests per target,
+standard error ≈0.05% on a 4% rate) against the real column's 120. Real rates
+recomputed on the same 12 cells are 0.68, 1.93, 8.20 and 12.67, so the
+comparison does not turn on the cell count.
 
 ### 2.6 Detectability
 
@@ -461,7 +495,10 @@ the competitive null, against four of 55 in the averaged arm:
 found by averaging (§3.4, ρ = −0.391, competitive *p* = 0.0004) and is found again
 without averaging. Its four genes reach spin significance 18.5% of the time
 against a target whose genome-wide rate is 0.82% (§2.5) — roughly 23-fold
-enrichment. The two arms share only the genes, the target and the nulls; they
+enrichment, and against a background that is low because the transcriptome is
+anti-aligned with baseline OEF rather than because the test is strict: rotated
+genes clear the same threshold at 4.1%. The two arms share only the genes,
+the target and the nulls; they
 combine evidence in ways that fail differently, so agreement between them is
 stronger evidence than either alone.
 
@@ -480,8 +517,9 @@ therefore neither confirms nor refutes the hypothesis whatever its cause.
 
 Its cause is partly measurable. The competitive null matches on set size and
 differential stability but **not on spatial autocorrelation**, and a spin test's
-conservativeness depends on the smoothness of both maps (§2.5), so a set of
-unusually smooth genes can appear depleted for reasons unconnected to oxygen.
+behaviour depends on the smoothness of both maps — modestly, on the evidence of
+§2.5's rotated-gene rates, but not negligibly — so a set of unusually smooth
+genes can appear depleted for reasons unconnected to oxygen.
 Fulcher et al. (2021) document the mirror image, categories with high spatial
 autocorrelation acquiring inflated false-positive rates. We tested it directly
 (x3), applying the same test to pericyte/mural, because both arms of this study
@@ -843,6 +881,20 @@ Atlas is described in Hawrylycz et al. (2012).
    set addressing H1's oxidative-phosphorylation arm, which was consequently
    tested only through the 200-gene HALLMARK set — the construction §3.2.1 shows
    to be least reliable. Phase 0d now reports declared-but-absent sets.
+9. **A miscalibration claim is withdrawn.** An earlier version of §2.5 read the
+   fifteen-fold spread in genome-wide clearance rates as the spin test being
+   conservative against baseline OEF and firing too readily against
+   extraction-mode discordance, and read the latter's 12.09% as a false-positive
+   rate. That inference assumes no gene
+   is truly associated with the target, which is not a null this field believes,
+   and it is refuted by measurement: against independently rotated genes — same
+   autocorrelation, no anatomical alignment, zero true association by
+   construction — the test fires at 3.9–4.1% against a nominal 5%, flat across
+   all four targets (x4). The spread is association, not error. The correction
+   strengthens rather than weakens the study's negatives, since a background rate
+   of 0.82% against baseline OEF now reflects genuine anti-alignment of the
+   transcriptome with that map. `scripts/check_paper_numbers.py` fails if the
+   withdrawn phrasing reappears.
 
 ## Figure captions
 
