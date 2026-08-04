@@ -102,16 +102,39 @@ STYLE = {
     "pdf.fonttype": 42,  # embed as TrueType so text stays editable
 }
 
+# Must cover every outcome Phase 0d emits. Figure 1 reads p0d's table directly
+# rather than recomputing it, so adding an outcome there adds one here — and
+# when the coupling angle was added to p0d these dicts were not, which killed a
+# four-hour regeneration at step 17 of 18 with a bare KeyError. assert_outcomes()
+# below turns that into an immediate, named failure instead.
 OUTCOME_COLOUR = {
     "baseline_oef": OI["blue"],
+    "coupling_angle": OI["green"],
     "discordance_extraction": OI["vermillion"],
     "discordance_overshoot": OI["orange"],
 }
 OUTCOME_LABEL = {
     "baseline_oef": "baseline OEF",
+    "coupling_angle": "coupling angle",
     "discordance_extraction": "discordance (extraction)",
     "discordance_overshoot": "discordance (overshoot)",
 }
+
+
+def assert_outcomes(present: set[str]) -> None:
+    """Fail loudly, and early, on an outcome with no colour or label.
+
+    The alternative is what happened: a KeyError raised deep inside a matplotlib
+    call, after every analysis step had already run, in a job long enough that
+    nobody is watching when it dies.
+    """
+    missing = sorted(present - set(OUTCOME_COLOUR)) + sorted(present - set(OUTCOME_LABEL))
+    if missing:
+        raise KeyError(
+            f"outcome(s) {sorted(set(missing))} appear in Phase 0d's table but have "
+            "no entry in OUTCOME_COLOUR/OUTCOME_LABEL in this file. Add them here "
+            "whenever MAP_LABEL in p0d_resolvable_tests.py gains an outcome."
+        )
 
 
 def panel(ax, letter: str) -> None:
@@ -170,6 +193,7 @@ def resolvability() -> pd.DataFrame:
 def figure1(out: Path) -> list[str]:
     """What this design can resolve."""
     d = resolvability()
+    assert_outcomes(set(d.outcome.unique()))
     rel = pd.read_csv(R / "p0c_geneset_reliability.csv").sort_values("reliability_panel")
 
     fig, (ax, bx) = plt.subplots(
