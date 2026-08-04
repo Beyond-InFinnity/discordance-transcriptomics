@@ -91,6 +91,17 @@ def _controls(source: str, a: str, b: str) -> float:
     return float(m.rho.iloc[0])
 
 
+def _calib(target: str, col: str = "pct_p_lt_05") -> float:
+    """Genome-wide spin-test calibration, per target (Phase 4c).
+
+    Quoted in §2.5. It is the number a reader needs to interpret any per-gene
+    spatial p-value, so it is checked like any other claim rather than left as
+    prose.
+    """
+    d = _csv("p4c_pergene_calibration_schaefer200x7.csv")
+    return float(d[d.target == target][col].iloc[0])
+
+
 def _macaque(target: str) -> float:
     d = _csv("x1_macaque_vascular.csv")
     return float(d[d.target == target].rho.iloc[0])
@@ -167,6 +178,17 @@ def build_claims() -> list[tuple[str, float, str]]:
             "0.52",
         ),
         ("tests limited by the gene side", float(res["n_binding_genes"]), "38"),
+        # --- spin-test calibration (§2.5) ------------------------------------
+        ("calibration: baseline OEF", _calib("baseline_oef"), "0.82"),
+        ("calibration: coupling angle", _calib("coupling_angle"), "2.06"),
+        ("calibration: overshoot", _calib("discordance_overshoot"), "7.85"),
+        ("calibration: extraction", _calib("discordance_extraction"), "12.09"),
+        ("calibration: mean p, baseline OEF", _calib("baseline_oef", "mean_p"), "0.632"),
+        (
+            "calibration: mean p, extraction",
+            _calib("discordance_extraction", "mean_p"),
+            "0.412",
+        ),
         (
             "GOBP set has negative reliability",
             float(rel.loc["GOBP_BLOOD_VESSEL_MORPHOGENESIS", "reliability_panel"]),

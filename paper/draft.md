@@ -176,6 +176,38 @@ estimate, spatial-null *p*, competitive-null *p*, Benjamini–Hochberg false
 discovery rate (FDR; Benjamini & Hochberg, 1995) across the family, and the
 multiverse distribution.
 
+**Calibration of the spatial null.** A spin test holds the *rotated* map's spatial
+autocorrelation fixed, so how conservative it is depends on the smoothness of
+both maps being compared — a property of the target, not of any gene set. We
+measured it genome-wide, correlating all 15,563 genes against each target across
+the multiverse, ≈1.8 million gene × pipeline tests per target:
+
+| target | split-half reliability | % of genes at spin *p* < 0.05 | mean *p* |
+|---|---|---|---|
+| baseline OEF | 0.978 | **0.82** | 0.632 |
+| coupling angle | 0.711 | 2.06 | 0.557 |
+| overshoot-mode discordance | 0.595 | 7.85 | 0.435 |
+| extraction-mode discordance | 0.579 | **12.09** | 0.412 |
+
+A uniform null would give 5% and a mean *p* of 0.5. The observed rates span
+fifteen-fold and track target reliability monotonically. The mechanism is
+mechanical: a smooth, strongly structured target produces smooth rotations that
+can correlate with a gene by chance, widening the null and making the test
+conservative; a noisy target produces rotations that correlate with little,
+narrowing the null and making it fire too readily.
+
+Two consequences. A single gene's spin *p* against extraction-mode discordance is
+not comparable with one against baseline OEF, and neither is comparable with the
+nominal 5% — against the outcome this study is about, roughly **one gene in eight**
+clears the threshold under what should be the null. And this is why no set-level
+claim rests on a spin *p* alone: the competitive null scores size- and
+stability-matched random sets through the same distortion, so it cancels.
+
+The quantity is not, to our knowledge, reported in this literature, and it cannot
+be estimated from a handful of gene sets — it needs the full panel. We report it
+because a reader cannot otherwise interpret any per-gene spatial *p*-value, here
+or elsewhere.
+
 ### 2.6 Detectability
 
 For each map we estimate split-half reliability with Spearman–Brown correction and
