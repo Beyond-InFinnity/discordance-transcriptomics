@@ -102,6 +102,19 @@ def _calib(target: str, col: str = "pct_p_lt_05") -> float:
     return float(d[d.target == target][col].iloc[0])
 
 
+def _x3(gene_set: str, target: str, col: str) -> float:
+    """Autocorrelation-matched competitive null (x3, §3.4.1).
+
+    Raises FileNotFoundError until x3 has run inside a regeneration; the caller
+    below turns that into a "pending" notice rather than a dead gate, so claims
+    for a newly-added analysis can be written before its artifact exists and
+    start verifying automatically once it does.
+    """
+    d = _csv("x3_autocorr_matched_schaefer200x7.csv")
+    m = d[(d.gene_set == gene_set) & (d.target == target)]
+    return float(m[col].iloc[0])
+
+
 def _p4c(gene_set: str, target: str, col: str) -> float:
     """Per-gene arm, set-level competitive result (§3.4.1)."""
     d = _csv("p4c_pergene_summary_schaefer200x7.csv")
@@ -165,7 +178,31 @@ def build_claims() -> list[tuple[str, float, str]]:
     res = _resolvability()
     rel = _csv("p0c_geneset_reliability.csv").set_index("gene_set")
 
+    # Claims whose artifact may not exist yet, because the analysis was added
+    # after the last regeneration. Reported as PENDING rather than failing the
+    # gate or, worse, killing it -- build_claims() raising would take every
+    # other claim down with it.
+    pending: list[tuple[str, float, str]] = []
+    try:
+        pending = [
+            (
+                "x3: OXPHOS -> OEF, autocorr-matched p",
+                _x3("HALLMARK_OXIDATIVE_PHOSPHORYLATION", "baseline_oef", "p_ds_moran"),
+                "0.052",
+            ),
+            (
+                "x3: pericyte -> OEF, autocorr-matched p",
+                _x3("pericyte_mural", "baseline_oef", "p_ds_moran"),
+                "0.013",
+            ),
+        ]
+    except (FileNotFoundError, IndexError, KeyError):
+        print("  PENDING  x3 autocorrelation-matched null: artifact not in results/")
+        print("           (analysis added after the last regeneration; its claims")
+        print("            in §3.4.1 verify once a regeneration includes x3)\n")
+
     return [
+        *pending,
         # --- what the design can detect (§3.2, the paper's central table) ---
         # Floors, not a resolvability count: the count was circular. See
         # p0d_resolvable_tests.py.

@@ -473,20 +473,49 @@ empirical rather than parametric.
 
 **The three oxidative-phosphorylation entries are depletions, not associations.**
 Negative *z*: those 199 genes reach significance *less* often than matched random
-sets — against baseline OEF, 0.01% versus 0.82% genome-wide. Two reasons not to
-read this as biology. The statistic is deliberately sign-free, so it says these
-genes are unusually *unrelated* to the maps in either direction, whereas H1
-predicts a negative *association* — depletion neither confirms nor refutes it.
-More seriously, the competitive null matches on set size and differential
-stability but **not on spatial autocorrelation**, and a spin test's behaviour
-depends on the smoothness of both maps (§2.5). Oxidative-phosphorylation genes are
-housekeeping-adjacent and strongly co-expressed; if their maps are systematically
-smoother than average, their nulls are systematically wider and they will appear
-depleted for reasons unconnected to oxygen. Fulcher et al. (2021) document the
-mirror image — categories with high spatial autocorrelation acquire inflated
-false-positive rates in gene-category enrichment. We report the depletion as a
-methodological observation and draw no biological inference from it; an
-autocorrelation-matched null would be required, and we did not run one.
+sets — against baseline OEF, 0.01% versus 0.82% genome-wide. The statistic is
+deliberately sign-free, so it says these genes are unusually *unrelated* to the
+maps in either direction, whereas H1 predicts a negative *association*. Depletion
+therefore neither confirms nor refutes the hypothesis whatever its cause.
+
+Its cause is partly measurable. The competitive null matches on set size and
+differential stability but **not on spatial autocorrelation**, and a spin test's
+conservativeness depends on the smoothness of both maps (§2.5), so a set of
+unusually smooth genes can appear depleted for reasons unconnected to oxygen.
+Fulcher et al. (2021) document the mirror image, categories with high spatial
+autocorrelation acquiring inflated false-positive rates. We tested it directly
+(x3), applying the same test to pericyte/mural, because both arms of this study
+use a null blind to autocorrelation and their agreement cannot resolve a shared
+blind spot.
+
+The premise holds: oxidative-phosphorylation genes are smoother than the genome
+(Moran's I 0.316 against 0.268, *p* = 5 × 10⁻⁷), and against baseline OEF their
+spin nulls are correspondingly wider (0.178 against 0.163, *p* = 4 × 10⁻¹²).
+Smoothness predicts per-gene significance against the smooth targets — ρ = −0.13
+for baseline OEF and the coupling angle — and not against the noisy ones
+(ρ = +0.03 for extraction), which is the mechanism rather than a coincidence: a
+gene's own smoothness only matters when the target's rotations are themselves
+smooth enough to correlate with it.
+
+Adding autocorrelation to the matching then attenuates every depletion, by an
+amount that tracks how strongly smoothness predicted significance for that target:
+
+| test | *z* (stability) | *p* | *z* (+ autocorrelation) | *p* |
+|---|---|---|---|---|
+| OXPHOS → coupling angle | −2.98 | 0.005 | −2.60 | 0.011 |
+| OXPHOS → baseline OEF | −2.09 | 0.035 | −1.83 | **0.052** |
+| OXPHOS → overshoot | −2.06 | 0.039 | −2.00 | 0.044 |
+| **pericyte/mural → baseline OEF** | +7.53 | 0.007 | **+5.62** | **0.013** |
+
+One depletion is fully accounted for — baseline OEF crosses to *p* = 0.052, and it
+is the test where the mechanism was strongest. Two survive. Autocorrelation is
+therefore a demonstrated contributor and not a sufficient explanation, and we
+still draw no biological inference from a sign-free depletion.
+
+The control matters more than the result it was built to check. **Pericyte/mural
+survives the matched null** (*p* = 0.013), attenuating by more in proportional
+terms than the depletions do — those four vascular markers are somewhat smooth
+themselves — but clearing a null the published one does not impose.
 
 **Glycolytic enzymes → extraction-mode discordance (*p* = 0.044) is what chance
 looks like.** It sits on H1's glycolytic arm, against the outcome the hypothesis
@@ -503,7 +532,8 @@ observation path for ragged surrogates; §3.3 scores that control through
 `corr_with_null`, which does.
 
 **What this arm changes.** The mediator arm of H1 now rests on two analyses that
-combine evidence differently and agree. The outcome arm gains one nominal hit
+combine evidence differently and agree, and on a null that matches the nuisance
+both of them were blind to. The outcome arm gains one nominal hit
 consistent with chance, on a target where 12% of all genes clear the spin
 threshold under the null. The conclusion of §3.4 is unaltered; what changes is
 that it no longer depends on a construction §3.2.1 shows to be the weaker
@@ -796,7 +826,12 @@ Atlas is described in Hawrylycz et al. (2012).
    from expression data alone and the selection never consults an outcome, so it
    cannot be a forking path — but it was chosen after the primary results were
    seen, and the pre-registered construction remains primary throughout.
-7. **One frozen gene set never ran.** `mitochondrial_density_proxy` is declared in
+7. **The autocorrelation-matched null (x3) is a disclosed addition**, prompted by
+   a specific alternative explanation for the oxidative-phosphorylation depletion
+   rather than by its result. It was applied to pericyte/mural at the same time
+   and for the same reason, so it could not be a test run only where a negative
+   was wanted.
+8. **One frozen gene set never ran.** `mitochondrial_density_proxy` is declared in
    `config/genesets.yaml` by HGNC family prefixes rather than an explicit gene
    list, and the loader silently keeps only sets with an explicit list. It
    therefore appears in no result and in no error. It was the only small curated

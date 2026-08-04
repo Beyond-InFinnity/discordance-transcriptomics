@@ -159,6 +159,12 @@ step "Phase 4b — data-driven arm"                     $PY scripts/p4b_datadriv
 # on the gene, so all ~15,500 genes against 10,000 rotations collapse into one
 # matrix product per cell x target -- minutes, not days.
 step "Phase 4c — per-gene arm, full multiverse"       $PY scripts/p4c_pergene.py --n-draws $NDRAWS $P4_CELLS
+# Whether a competitive-null result is spatial autocorrelation. The published
+# null matches size and differential stability but not smoothness, and a spin
+# test's conservativeness depends on the smoothness of both maps -- so a set of
+# unusually smooth genes can look depleted for reasons unconnected to biology.
+# Reads Phase 4c's per-gene statistics, so it must follow it.
+step "x3 — autocorrelation-matched null"              $PY scripts/x3_autocorr_matched.py --n-draws $NDRAWS
 step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
 # Disclosed sensitivity analysis, run every time rather than on request. The
 # pre-registered specification removes only the FIRST connectivity gradient, but
