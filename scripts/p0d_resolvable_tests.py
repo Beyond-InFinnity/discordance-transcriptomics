@@ -73,8 +73,20 @@ from src.utils.manifest import manifest
 logger = logging.getLogger("p0d_resolvable")
 
 # Phase 0c names maps for humans; Phase 4 names them for machines.
+#
+# The coupling angle belongs here even though earlier versions of this table
+# omitted it. §7.3 of the protocol names the coupling ratio the PRIMARY outcome
+# — "continuous is statistically stronger than binary" — and the angle is the
+# reparameterisation that does not blow up as the denominator approaches zero.
+# It is already a target in Phase 4 and Phase 4c and already has floors computed
+# in Phase 0c; its absence from the central table left the pre-registered primary
+# outcome as the one outcome the design's own detectability analysis never
+# covered. It is also the most reliable of the three coupling-derived maps
+# (0.711 against 0.579 and 0.595), so excluding it understated what the design
+# could reach.
 MAP_LABEL = {
     "baseline_oef": "baseline OEF",
+    "coupling_angle": "coupling angle",
     "discordance_extraction": "discordance (extraction)",
     "discordance_overshoot": "discordance (overshoot)",
 }
