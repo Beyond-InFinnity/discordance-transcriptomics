@@ -122,6 +122,13 @@ def _x3(gene_set: str, target: str, col: str) -> float:
     return float(m[col].iloc[0])
 
 
+def _x7(gene_set: str, target: str, col: str) -> float:
+    """Bootstrap CI (x7, §5)."""
+    d = _csv("x7_bootstrap_ci_schaefer200x7.csv")
+    m = d[(d.gene_set == gene_set) & (d.target == target)]
+    return float(m[col].iloc[0])
+
+
 def _x6(alpha: float, col: str) -> float:
     """Dissociation simulation (x6, §4)."""
     d = _csv("x6_dissociation_schaefer200x7.csv")
@@ -324,6 +331,36 @@ def build_claims() -> list[tuple[str, float, str]]:
         ]
     except (FileNotFoundError, IndexError, KeyError):
         print("  PENDING  x6 dissociation simulation: artifact not in results/")
+        print("           (analysis added after the last regeneration; its claims")
+        print("            in §4 verify once a regeneration includes x6)\n")
+
+    try:
+        pending += [
+            (
+                "x7: pericyte CI lower",
+                _x7("pericyte_mural", "baseline_oef", "boot_lo_widened"),
+                "0.62",
+            ),
+            (
+                "x7: pericyte CI upper",
+                _x7("pericyte_mural", "baseline_oef", "boot_hi_widened"),
+                "0.16",
+            ),
+            (
+                "x7: widening factor",
+                float(_man("x7_bootstrap_ci_schaefer200x7")["widening_factor"]),
+                "1.25",
+            ),
+            (
+                "x7: sampling vs pipeline",
+                float(
+                    _man("x7_bootstrap_ci_schaefer200x7")["median_sampling_over_pipeline"]
+                ),
+                "seven",
+            ),
+        ]
+    except (FileNotFoundError, IndexError, KeyError):
+        print("  PENDING  x7 bootstrap CIs: artifact not in results/")
         print("           (analysis added after the last regeneration; its claims")
         print("            in §4 verify once a regeneration includes x5)\n")
 

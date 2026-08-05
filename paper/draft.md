@@ -859,8 +859,14 @@ null constrains.
   |ρ| ≤ 0.315 across the whole chain.
 - **The pericyte/mural set is 4 genes of 5** — ANPEP is absent from the AHBA
   expression matrix.
-- **No sampling confidence intervals are reported.** Multiverse IQR is pipeline
-  dispersion, not sampling uncertainty. `[TODO: bootstrap CIs over parcels.]`
+- **Sampling uncertainty is roughly seven times the multiverse IQR**, so every
+  interval elsewhere in this paper understates precision by about that factor.
+  Bootstrapping over parcels and widening by √(n / n_eff) = 1.25 for spatial
+  dependence, the primary effect is ρ = −0.391, 95% CI **[−0.62, −0.16]** — it
+  excludes zero, but spans from a large effect to a small one. Three of five
+  reported effects exclude zero at 95%. Pipeline choice was never the binding
+  source of imprecision here, and reporting only a multiverse IQR implied a
+  tightness the data do not support.
 
 ---
 

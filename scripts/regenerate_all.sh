@@ -182,6 +182,9 @@ step "x5 — required reliability"                      $PY scripts/x5_required_
 # against -- but §4's central interpretive claim rests on it, so it carries a
 # manifest like every other number.
 step "x6 — dissociation simulation"                   $PY scripts/x6_dissociation.py
+# The sampling uncertainty every other interval in the paper is NOT. Reads the
+# multiverse and the target maps, so it follows them; ~2 minutes.
+step "x7 — bootstrap confidence intervals"            $PY scripts/x7_bootstrap_ci.py --n-boot $NBOOT --max-cells $CELLS
 step "Phase 5  — hierarchy, pre-registered (DECISIVE)" $PY scripts/p5_hierarchy.py --max-cells $CELLS --covariates principal
 # Disclosed sensitivity analysis, run every time rather than on request. The
 # pre-registered specification removes only the FIRST connectivity gradient, but
