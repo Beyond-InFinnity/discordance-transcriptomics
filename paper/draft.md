@@ -1,6 +1,6 @@
 # Vascular gene expression predicts cortical oxygen extraction; its link to BOLD–CMRO₂ discordance is below current detection limits
 
-**Working draft.** Every number is generated from `results/` at git `e25f745`,
+**Working draft.** Every number is generated from `results/` at git `552619b`,
 which passes `scripts/audit_provenance.py` 6/6, and is machine-verified against
 those artifacts by `scripts/check_paper_numbers.py`. Items marked `[TODO]` are
 genuinely outstanding, not placeholders for numbers.
