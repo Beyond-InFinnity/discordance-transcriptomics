@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "discordance_annotation",
+  "version": "0.9.2",
+  "status": "provisional",
+  "description": "Parcel-level annotation of BOLD/CMRO2 discordance and baseline oxygen metabolism in human left cortex, derived from ds004873 (Epp et al. 2025, Nat Neurosci).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "parcellation",
+      "parcel_index",
+      "parcel_name",
+      "hemisphere"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "parcellation": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "unit": "",
+        "stability": null,
+        "description": "Parcellation this row belongs to."
+      },
+      "parcel_index": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "unit": "",
+        "stability": null,
+        "description": "1-based parcel label within the hemisphere."
+      },
+      "parcel_name": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "unit": "",
+        "stability": null,
+        "description": "Atlas label name."
+      },
+      "hemisphere": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "unit": "",
+        "stability": null,
+        "description": "Always 'L': only 2 of 6 AHBA donors have right-hemisphere tissue (CLAUDE.md R3)."
+      },
+      "baseline_oef": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "fraction",
+        "stability": "stable",
+        "split_half_reliability": 0.978,
+        "description": "Baseline oxygen extraction fraction, control condition. Authors' published group median (n=40, GM/R2'/CBV masked)."
+      },
+      "baseline_cbf": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "mL/100g/min",
+        "stability": "stable",
+        "description": "Baseline cerebral blood flow, control condition, same source. Includes the authors' 1/0.75 scanner upscaling."
+      },
+      "baseline_cmro2": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "umol/100g/min",
+        "stability": "stable",
+        "description": "Baseline cerebral metabolic rate of oxygen, control condition, same source."
+      },
+      "coupling_n_angle": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "radians",
+        "stability": "stable",
+        "split_half_reliability": 0.711,
+        "description": "Coupling ratio as the angle atan2(%dCBF, %dCMRO2) in the calc-vs-control contrast, median across subjects. Bounded and continuous through the origin, unlike the raw ratio n."
+      },
+      "discordance_risk": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "fraction",
+        "stability": "low_reliability",
+        "split_half_reliability": 0.491,
+        "description": "Fraction of subjects in whom BOLD and CMRO2 move in opposite directions, i.e. coupling ratio n < 1. Uses the first-order approximation sign(dBOLD) = sign(dCBF - dCMRO2). LOW RELIABILITY (split-half 0.49, below this project's 0.5 floor): it sums two topographically distinct modes, which cancels signal and makes the total less reliable than either part. Prefer discordance_risk_extraction (0.58) or discordance_risk_overshoot (0.60)."
+      },
+      "discordance_risk_extraction": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "fraction",
+        "stability": "stable",
+        "split_half_reliability": 0.579,
+        "description": "Fraction of subjects in the EXTRACTION mode: CMRO2 rises while BOLD falls, i.e. oxygen demand goes up and flow fails to keep pace, so the tissue raises its extraction fraction. This is the mode the Epp et al. mechanism concerns and the one a capillary-density hypothesis predicts. Use THIS column, not discordance_risk, for vascular hypotheses."
+      },
+      "discordance_risk_overshoot": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "fraction",
+        "stability": "stable",
+        "split_half_reliability": 0.595,
+        "description": "Fraction of subjects in the OVERSHOOT mode: CMRO2 falls while BOLD rises, i.e. flow is delivered in excess of falling demand. Same arithmetic as extraction, different physiology."
+      },
+      "discordance_risk_n": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "unit": "",
+        "stability": "stable",
+        "description": "Number of subjects contributing to the discordance columns."
+      },
+      "dropout_snr_coverage": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "fraction",
+        "stability": "stable",
+        "description": "Fraction of the parcel's cortical vertices surviving the authors' SNR criterion. Low values indicate signal dropout; carry as a covariate."
+      },
+      "venous_partial_volume": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "fraction",
+        "stability": "stable",
+        "description": "Mean venous partial volume (VENAT atlas). The brain-vs-vein confound."
+      },
+      "map_reliability_coupling": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "correlation",
+        "stability": "stable",
+        "description": "Split-half Spearman-Brown reliability of the WHOLE coupling map at this parcellation (a map-level constant, not per-parcel)."
+      },
+      "n_subjects_coupling": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "unit": "",
+        "stability": null,
+        "description": "Subjects with all four maps needed for the coupling contrast."
+      },
+      "baseline_source": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "unit": "",
+        "stability": null,
+        "description": "Provenance of the baseline columns."
+      },
+      "coupling_source": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "unit": "",
+        "stability": null,
+        "description": "Provenance of the coupling and discordance columns."
+      },
+      "ahba_n_samples": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "unit": "",
+        "stability": "provisional",
+        "description": "AHBA microarray samples falling in this parcel (left hemisphere). Null when not computed. Parcels with 0 cannot support transcriptomic analysis."
+      }
+    }
+  }
+}

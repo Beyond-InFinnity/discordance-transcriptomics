@@ -1,5 +1,15 @@
 # R8: never commit data. Provenance lives in data/MANIFEST.yaml, not the files.
 data/*
+
+# ...with one deliberate exception. R8 says never commit data, and the reason is
+# size and regenerability: raw inputs are gigabytes and derived intermediates
+# rebuild from code. The annotation table is neither. It is ~255 KB, it is the
+# project's stated public deliverable, and nobody can regenerate it without the
+# full pipeline plus a 4 GB atlas download. The paper says it is "available at"
+# the repository URL, and a claim of availability has to be true.
+!data/derived/
+data/derived/*
+!data/derived/annotation/
 !data/MANIFEST.yaml
 !data/.gitkeep
 
