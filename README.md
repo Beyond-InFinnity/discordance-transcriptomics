@@ -1,191 +1,91 @@
 # discordance-transcriptomics
 
-Does the spatial topography of **BOLD/CMRO₂ discordance** in human cortex reflect
-**molecular vascular and metabolic architecture**? Post-mortem transcriptomics
-(Allen Human Brain Atlas) as the explanatory layer, tested against
-spatial-autocorrelation-preserving nulls across the full space of defensible
-processing choices.
+About 40% of cortical voxels that respond to a task show oxygen metabolism moving
+the *opposite* way to the BOLD signal (Epp et al., 2025). The leading explanation
+is that association cortex has sparser capillaries, so blood supply cannot keep
+up. Nobody had checked that against molecular data.
 
-Epp et al. (2025, *Nat Neurosci*, [doi:10.1038/s41593-025-02132-9](https://doi.org/10.1038/s41593-025-02132-9))
-showed that ~40% of voxels with significant task-evoked BOLD changes have oxygen
-metabolism moving in the *opposite* direction, concentrated in the default mode
-network. The first author's thesis speculates that association cortex has lower
-capillary density, and that sparse supply could produce weakened or reversed
-responses. That speculation had never been tested against molecular vascular
-architecture. This repository tests it.
+This repository checks it, using post-mortem gene expression from the Allen Human
+Brain Atlas. It also measures something the field usually skips: whether the test
+could have worked at all.
 
-Two hypotheses, both pre-specified before any result was seen:
-
-- **H1** — discordance propensity tracks glycolytic and vascular gene programs
-  (negatively with oxidative phosphorylation), *over and above* the
-  unimodal→transmodal cortical hierarchy.
-- **H2** — `vascular/metabolic expression → baseline OEF/CBV → discordance`.
-
-`CLAUDE.md` is the full specification. §3 (Hard Rules) and §13 (Stop-and-Ask)
-are binding on all work here.
+**Short answer.** Vascular gene expression does predict baseline oxygen
+extraction. It does not predict discordance. And most of the tests could never
+have found an ordinary effect in the first place. That last part turned out to be
+the useful finding.
 
 ---
 
-## What was found
+## What it found
 
-**Both pre-specified hypotheses failed, and one unlooked-for result held.**
-Reported here in the same order and detail as if they had succeeded.
+**Pericyte and mural-cell genes predict baseline oxygen extraction fraction.**
+ρ = −0.391, same sign in all 240 tests, competitive *p* = 0.0004. It survives
+four independent ways of computing it, and gets stronger when the
+sensory-to-association hierarchy is partialled out.
 
-**Vascular gene expression predicts baseline oxygen extraction.** Pericyte/mural
-genes at ρ = −0.39 and angiogenesis genes at ρ = −0.36, each holding sign in
-**100% of 120 processing pipelines**, each surviving a competitive null of random
-gene sets matched on both size and cross-donor reproducibility (p = 0.0004,
-0.0002). Correcting both sides for measurement noise puts the underlying effect
-near −0.53. The signal runs through **blood flow** (ρ = +0.45), not blood volume
-(ρ = −0.03) — which matters, because blood volume enters the derivation of the
-extraction estimate and would otherwise have made the result circular.
+It does not survive correction for the family of tests it belongs to (adjusted
+*p* = 0.130), and the 95% confidence interval is wide: [−0.62, −0.16]. Treat it
+as suggestive.
 
-**Discordance itself is not predicted by any frozen gene set.** Nor, in a
-whole-transcriptome screen of 15,562 genes with Westfall–Young family-wise
-correction, by any individual gene.
+**Nothing predicts discordance.** Not the frozen gene sets, not any of 15,562
+individual genes, and not baseline extraction. The mediation model that would
+have supported the capillary explanation returns nothing across 15,840 fits.
 
-**H2 breaks at its second link.** Gene expression predicts baseline extraction
-(strong), but baseline extraction does not predict where discordance occurs
-(ρ = −0.13, p = 0.36). A path model fitted across 120 pipelines returns a null
-indirect effect and names `b` as the limiting link, rather than reporting "no
-mediation found".
+**Most of the design could not have worked.** For each of the 44 planned tests we
+computed the smallest true effect it could resolve, given how reliably both maps
+were measured:
 
-**Discordance is two phenomena, not one.** An extraction mode (demand rises, flow
-lags, extraction increases, signal falls) and an overshoot mode (demand falls,
-flow lags, signal rises). They are spatially anticorrelated at −0.56, and only
-the extraction mode is what a capillary-density account predicts. It peaks in
-**somatomotor cortex** — among the best-perfused tissue in the brain — with the
-default mode network fourth.
+| | |
+|---|---|
+| tests that could resolve an ordinary effect (ρ ≈ 0.3) | 0 of 44 |
+| tests untestable at any effect size | 4 |
+| limited by the gene data rather than the imaging | 38 |
+| smallest resolvable effect anywhere in the design | 0.30 |
 
-### Why these negatives are interpretable
+More subjects would not have helped. The bottleneck is the gene side.
 
-Three things separate a bounded negative from an underpowered one:
+A large part of that is self-inflicted. Averaging a gene set into a single map
+destroys the signal whenever the genes resemble each other less than their shared
+noise does. That is the usual case in a microarray atlas, because every gene is
+measured from the same tissue punches. One Gene Ontology set here has *negative*
+reliability as an average, while its individual genes replicate fine.
 
-- **A working positive control.** The same machinery, same parcels, same
-  statistics detects endothelial genes tracking directly-measured macaque
-  microvascular density at ρ = +0.46, spin-significant in 99% of the 120
-  pipelines, and a transcriptome-wide excess at z = 5.9 in all 12 pipelines the
-  whole-transcriptome arm was run over. The same test returns nothing for any
-  discordance measure, in 0 of 12.
-- **Measured detectability bounds.** Gene-set map reproducibility was measured
-  per donor rather than assumed, giving a real exclusion threshold per set —
-  from 0.41 for the best-measured to 0.94 for the worst. For the vascular sets
-  the hypothesis concerns, true effects above ~0.44 are excluded. **For the three
-  large HALLMARK collections it is not an exclusion at all**, and those nulls are
-  reported as uninformative rather than as evidence.
-- **The dominant confound does not apply.** Correlation with the Margulies
-  principal gradient is 0.04. Most negatives in this literature cannot rule out
-  that they are hierarchy artifacts; this one can.
-
-### A methodological result
-
-Human cerebral blood volume gives a sensory-to-association ratio of **0.97**,
-against **2–3** in directly measured macaque cortical tissue. Both available
-human measurements are effectively flat. The standard human measurement therefore
-cannot resolve the microvasculature, and cannot test the capillary hypothesis at
-all — which is a useful thing to have established.
+**What the next study would need.** To resolve ρ = 0.30 against baseline
+extraction, a gene panel needs reliability 0.68. The best one here reaches 0.670.
+Against discordance the requirement is 1.15, which is impossible: no improvement
+to the gene side alone can rescue it.
 
 ---
 
-## Status
+## The data
 
-| Phase | State | Result |
-|---|---|---|
-| **0a** reliability gate | ✅ pass | baseline OEF 0.98, coupling map 0.71 (split-half, Spearman-Brown) |
-| **0b** dropout gate | ✅ pass | carried as a mandatory covariate downstream |
-| **1** reproduction (scoped) | ✅ pass | authors' group CBF map regenerated: r = 1.000000, median abs difference 4.5 × 10⁻¹³ over 867,944 voxels |
-| **2** target maps | ✅ done | 3 parcellations, per-column reliability released |
-| **3** expression multiverse | ✅ done | 120/120 cells × 3 parcellations, no gaps |
-| **4** gene sets, both nulls | ⚠️ re-running | 11 frozen sets × 120 pipelines × 3 stability thresholds — see the correction note below |
-| **4b** data-driven arm | ✅ done | 15,562-gene screen over 12 pipelines, max-T family-wise correction, PLS |
-| **5** hierarchy control | ⚠️ re-running | reference-map partialling done; the gene-set step §9 calls decisive is newly implemented and running now. First result: pericyte/mural against baseline OEF strengthens from −0.385 raw to −0.417 partial (p_spin = 0.015) |
-| **6** mediation | ⚠️ re-running | 15,840 path models, spatial null on every path — inherits the Phase 4 correction |
-| **7** artifacts | ◐ partial | annotation table released; app and preprint outstanding |
+The released artifact is `data/derived/annotation/`. It is 334 cortical parcels
+across three parcellations, with:
 
-256 tests. `docs/WHERE_WE_ARE.md` is the plain-language running summary and the
-best entry point; `CLAUDE.md` is the specification.
+- baseline oxygen extraction, blood flow, and metabolic rate
+- flow-metabolism coupling angle, and discordance split by mode
+- scanner dropout coverage and venous partial-volume, as covariates
+- a JSON schema, and a reliability label on every column
 
-### Correction in progress (2026-07-30)
+```python
+import pandas as pd
+df = pd.read_csv("data/derived/annotation/discordance_annotation.csv")
+```
 
-An independent review found two defects that invalidate part of the Phase 4 and
-Phase 6 numbers. Both are fixed in code and the affected phases are being re-run;
-the result files in `results/` predate the fix and should not be used until this
-note is removed.
+Read the reliability labels before using a column. Several are too noisy to
+support the analysis you may want.
 
-1. **A frozen gene set was silently the wrong set.** The loader matched MSigDB
-   keys by substring, and four fetched GO terms contain "blood vessel
-   morphogenesis". All four matched, the last in dict order won, and
-   `GOBP_BLOOD_VESSEL_MORPHOGENESIS` was in fact the 5-gene *Venous* Blood Vessel
-   Morphogenesis term (GO:0048845) rather than the 53-gene general term
-   (GO:0048514). It produced plausible numbers and never raised. Sources are now
-   pinned by exact key in `config/genesets.yaml`, an absent key raises, and
-   `tests/test_datadriven.py::TestFrozenGeneSetIdentity` pins the membership. The
-   frozen declaration itself is unchanged — R5 is intact; the loader was not
-   honouring it.
-2. **Phase 4 used one target's surrogates for every target.** It loaded the
-   baseline-OEF null set once and reused it, contrary to `corr_with_null`'s
-   documented contract that surrogates belong to the map being rotated. Each
-   target now gets its own. The bias is conservative — the reused map is smoother
-   than the gene maps, so the null was too wide — meaning the reported negatives
-   were if anything understated.
-
-A third defect, in `pls_with_spin`, dropped surrogates containing any missing
-parcel. On the cross-species map, which has 17, that left **two** usable
-surrogates and p-values that could only be 1/3, 2/3 or 1. Fixed by the same
-paired approach already used in the gene screen.
+`geneset_profiles.csv` holds the gene-set results behind the findings above.
 
 ---
 
-## The released artifact
+## Reproducing it
 
-`data/derived/annotation/discordance_annotation.csv` — per cortical parcel, at
-three parcellations (Schaefer-200, Schaefer-400, Desikan-Killiany), with a JSON
-Schema and data dictionary:
-
-- baseline oxygen extraction fraction, cerebral blood flow, CMRO₂
-- coupling ratio as a bounded angle rather than a ratio that diverges at zero
-- discordance frequency, **separated into extraction and overshoot modes**
-- the scanner-dropout and venous partial-volume covariates
-- Allen atlas sample coverage per parcel
-
-**Every measurable column publishes its own split-half reliability**, so users
-can attenuation-correct rather than assume perfect measurement. Stability labels
-are derived from those measurements at build time, not hand-maintained — a column
-cannot be advertised as reliable while its measured reliability says otherwise.
-
----
-
-## The three statistical guardrails
-
-Imaging-transcriptomics has a poor reputation for specific, well-documented
-reasons. This repository is built to prevent each structurally rather than by
-discipline:
-
-1. **Spatial autocorrelation.** Two arbitrary smooth brain maps correlate at
-   r ≈ 0.4 by chance. `src/stats/spatial.py::corr_with_null()` is the only
-   sanctioned way to correlate two maps here, and it *cannot* return a p-value
-   without a spatial null — passing `nulls=None` raises.
-2. **Pipeline dependence.** Markello et al. (2021) showed AHBA processing choices
-   can shift a correlation by ρ ≥ 1.0 — enough to reverse a published finding.
-   Every effect is reported as a distribution over 120 pipelines with the share
-   agreeing on sign, never as a point estimate.
-3. **The hierarchy confound.** Association cortex differs from sensory cortex on
-   nearly everything. Phase 5 partials the principal functional gradient, T1w/T2w
-   myelin and the dropout proxy. If nothing survives, the result is a hierarchy
-   finding and is reported as one.
-
-Every result artifact carries a `.manifest.json` recording git SHA, config hash,
-package versions, seed, wall-clock time and input checksums.
-
----
-
-## Setup
-
-Python 3.11 and Connectome Workbench.
+Setup needs Python 3.11 and Connectome Workbench. Install Workbench first;
+`neuromaps` shells out to it for every surface transform and a missing install is
+the most common failure here.
 
 ```bash
-# Workbench first — neuromaps needs it for every surface transform,
-# and it is the most common setup failure.
 wget https://humanconnectome.org/storage/app/media/workbench/workbench-linux64-v1.5.0.zip
 unzip workbench-linux64-v1.5.0.zip -d ~/opt/
 export WORKBENCH_DIR="$HOME/opt/workbench/bin_linux64"
@@ -193,112 +93,97 @@ wb_command -version
 
 uv venv --python 3.11 .venv && source .venv/bin/activate
 uv pip install -r requirements.txt
-nbstripout --install --attributes .gitattributes   # per checkout; see note below
+nbstripout --install --attributes .gitattributes
 
-python scripts/fetch_all.py       # all public datasets, checksum-verified
+python scripts/fetch_all.py
 pytest -q && ruff check src/ scripts/ tests/
 ```
 
-Three pinned deviations from a plain install, each documented inline in
-`requirements.txt`: `abagen` is pinned to a commit SHA rather than a release (the
-PyPI build calls `DataFrame.append`, removed in pandas 2.0, in its core
-aggregation path); `pandas` is capped `<3` (3.0 removed `groupby(axis=)`, which
-abagen still uses); `setuptools<81` because abagen imports `pkg_resources`.
+Then:
 
-`nbstripout` must be registered per checkout — `.gitattributes` is committed but
-the filter lives in `.git/config` and does not travel with a clone.
+```bash
+scripts/regenerate_all.sh          # everything, about 4 hours
+scripts/regenerate_all.sh --quick  # reduced permutations, smoke test only
+```
+
+`results/` is not tracked. It rebuilds from the command above, and every file
+carries a manifest recording the git commit, config hash, package versions and
+seed that produced it. Three gates check the output:
+
+| script | what it checks |
+|---|---|
+| `audit_provenance.py` | every artifact came from one commit, one clean tree, one run |
+| `check_paper_numbers.py` | every number in the manuscript matches its artifact |
+| `verify_references.py` | every citation resolves to the paper it claims |
+
+Three pinned dependencies deviate from a plain install, each explained inline in
+`requirements.txt`. `abagen` is pinned to a commit rather than a release because
+the PyPI build calls a pandas method removed in 2.0. `pandas` is capped below 3.0
+for the same reason. `setuptools` is capped below 81 because abagen imports
+`pkg_resources`.
+
+`nbstripout` has to be registered per checkout. `.gitattributes` is committed but
+the filter itself lives in `.git/config` and does not survive a clone.
 
 ---
 
-## Running it
+## How the statistics are guarded
 
-```bash
-python scripts/p0_reliability.py            # blocking gate
-python scripts/p0_dropout.py                # blocking gate
-python scripts/p0_dynamic_range.py          # detectability bounds
-python scripts/p0c_geneset_reliability.py   # gene-set map reproducibility
-python scripts/p2_build_targets.py
-python scripts/p3_multiverse.py --n-jobs 6  # 120 cells; --parcellation for sensitivity
-python scripts/p4_genesets.py --n-draws 10000
-python scripts/p4b_datadriven.py            # whole-transcriptome arm
-python scripts/p5_hierarchy.py
-python scripts/p6_mediation.py --n-boot 10000
-python scripts/build_annotation.py --ahba
-python scripts/x1_macaque_vascular.py       # cross-species positive control
-```
+Imaging transcriptomics has three well-known ways to produce a false positive.
+Each is handled structurally rather than by convention.
 
-Phase 1 is a **scoped** reproduction — rather than regenerating every published
-figure, it reproduces the authors' group-level parameter maps exactly and
-extracts the two pipeline conventions Phase 2 depends on. It was run against
-`two_modes_of_hemodynamics` @ `1b22c2cb`; the working is in
-`results/p1_reproduction_notes.md`, including the discrepancies found.
+**Smooth maps correlate by chance.** Two arbitrary brain maps reach ρ ≈ 0.4 with
+no relationship at all. Every correlation here is tested against
+spatial-autocorrelation-preserving nulls, and `src/stats/spatial.py` has no code
+path that returns a p-value without one.
 
-Everything is cached by content hash and idempotent, so an interrupted run
-resumes from where it stopped. Peak memory per abagen process is ~7 GB; see
-`docs/MIGRATING_MACHINES.md` for running across hosts.
+**Preprocessing choices move results.** Published work shows AHBA parameter
+choices can shift a correlation by enough to flip its sign. Every effect is
+reported across 120 pipelines, not one.
+
+**Association cortex differs from sensory cortex on everything.** Any map varying
+along that axis correlates with any gene set varying along it. Every result is
+reported before and after partialling the principal gradient and cortical myelin.
 
 ---
 
 ## Layout
 
 ```
-config/       base.yaml, multiverse.yaml, genesets.yaml (frozen before Phase 4)
-src/          importable, tested logic
-  data/       fetch, target maps, parcellation, cross-species transfer, warping
-  stats/      spatial.py (the null enforcement point), reliability, competitive,
-              hierarchy, mediation
-  expression/ abagen multiverse runner, gene sets, data-driven arm
-  utils/      config, manifest, caching, compute backend
-scripts/      thin CLI wrappers, one per phase step
-tests/        pytest — 251 tests
-results/      every output plus its .manifest.json
-data/         gitignored; provenance in data/MANIFEST.yaml
-docs/         WHERE_WE_ARE.md, MIGRATING_MACHINES.md, NV_DATA_SURVEY.md
+config/     seed, parcellation, and the frozen gene-set definitions
+src/        importable, tested analysis code
+scripts/    one thin wrapper per pipeline step
+tests/      307 tests
+paper/      manuscript, verified reference list
+app/        Streamlit browser for the annotation table
+data/       gitignored, except the released annotation table
+results/    gitignored; rebuilds from scripts/regenerate_all.sh
 ```
 
-`src/` holds logic, `scripts/` holds argparse wrappers, `notebooks/` are figures
-only and never contain analysis.
+`CLAUDE.md` is the full specification. Its §3 (hard rules) and §13
+(stop-and-ask) are binding on any work here.
 
 ---
 
-## Data
+## Limitations
 
-`data/` is gitignored. Provenance — URLs, snapshot tags, SHA256, fetch dates —
-lives in `data/MANIFEST.yaml`.
-
-⚠️ **Fetch ds004873 through `src/data/fetch.py`, not `aws s3 sync`.** The S3
-mirror serves snapshot 1.0.4, which contains no derivatives at all; the mqBOLD
-maps exist only in the 2.0.x snapshots. `fetch.py` pins 2.0.7 and verifies every
-file against the SHA256 embedded in its git-annex key.
-
-Two items cannot be scripted, and are reported rather than failed silently: the
-BALSA macaque vascular download requires an account, and Allen donor 15496
-returns HTTP 404 upstream, so every analysis here runs on five of six donors.
-
----
-
-## Known limitations
-
-Written here rather than discovered in review:
-
-- The Allen atlas is six adult post-mortem donors, bulk microarray, predominantly
-  left hemisphere. It is a *modal* brain. No individual-level inference is
-  licensed.
-- Spatial correlation is not mechanism. The mediation model is suggestive at best.
-- The source dataset is ~40 subjects, one scanner, one site.
-- Only 2 of 4 experimental conditions are published in standard space, so the
-  contrast is task-versus-task rather than task-versus-rest. This is the largest
-  open uncertainty in the discordance maps.
-- Volumetric→surface projection discards subcortex and cerebellum.
-- Cross-species registration error is ~6.7 mm in sensory cortex and ~18.2 mm in
-  association cortex — worst precisely where the question lives.
-- mqBOLD carries its own assumptions, which propagate into every extraction and
-  metabolism estimate here.
+- The Allen atlas is six post-mortem adults, five usable, mostly left
+  hemisphere. It is a modal brain, not a sample. No individual-level claim
+  follows from it.
+- Spatial correlation is not mechanism. The mediation model is suggestive at
+  best, and here it is null.
+- One imaging dataset, 40 subjects, one scanner, one site.
+- Projecting volumes to the surface discards subcortex and cerebellum.
+- The mqBOLD method carries its own assumptions about vessel geometry and blood
+  volume, and those propagate into every extraction and metabolism value.
+- One positive control fails: our metabolic rate map disagrees with the PET
+  reference. So does the authors' published map, which locates the disagreement
+  in the method rather than in this reconstruction.
 
 ---
 
 ## Licence and citation
 
-Analysis code: MIT. ds004873 is CC0 — cite Epp et al. (2025) and the OpenNeuro
-DOI when using it. The macaque vascular maps are from Autio et al. and should be
-cited directly.
+Analysis code is MIT. ds004873 is CC0; cite Epp et al. (2025) and the OpenNeuro
+DOI when using it. The macaque vascular maps are from Autio et al. (2025) and
+should be cited directly.
