@@ -22,7 +22,7 @@ python scripts/fetch_all.py           # or src/data/fetch.py, see below
 ```
 
 Then start a Claude Code session in the directory. `CLAUDE.md` is the
-specification, `docs/WHERE_WE_ARE.md` is the plain-language state, and
+specification, `docs/BACKGROUND.md` is the plain-language explainer, and
 `docs/RESUME_HERE.md` lists the open items.
 
 ---

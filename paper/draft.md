@@ -1023,11 +1023,17 @@ emitted as vector PDF alongside 400 dpi raster.
 
 ## Appendix B — Outstanding
 
-- Citation for the macaque vascular atlas.
-- The required-reliability curve in §4.
-- The dissociation simulation in §4.
-- Bootstrap confidence intervals over parcels.
-- Author list, affiliations, funding, competing interests.
+Every analysis item is closed. The macaque atlas is cited (Autio et al., 2025,
+with Xu et al., 2020 for the cross-species registration); the
+required-reliability curve and the dissociation simulation are in §4; bootstrap
+confidence intervals are in §5. All are computed inside
+`scripts/regenerate_all.sh` and verified against `results/` by
+`scripts/check_paper_numbers.py`.
+
+What remains is editorial:
+
+- Author list, affiliations, ORCIDs.
+- Funding and competing interests.
 - Target venue: reads as *Imaging Neuroscience* or *NeuroImage*.
 
 ---
