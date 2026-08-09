@@ -2,8 +2,9 @@
 
 **Working draft.** Every number is generated from `results/` at git `552619b`,
 which passes `scripts/audit_provenance.py` 6/6, and is machine-verified against
-those artifacts by `scripts/check_paper_numbers.py`. Items marked `[TODO]` are
-genuinely outstanding, not placeholders for numbers.
+those artifacts by `scripts/check_paper_numbers.py`. Every analysis is complete;
+what remains before submission is the author block and affiliation (§8 declares
+funding and competing interests; the byline is not yet written).
 
 ---
 
@@ -909,6 +910,30 @@ or leaving that pool shifts the quantile bin edges and therefore every draw. We
 report *p* to three decimals because that is what the design supports; the third
 decimal should not be read as stable.
 
+**Use of AI assistance.** This work was produced in an agentic coding
+environment using Anthropic's Claude (Opus 5). Its contribution was substantial
+and is described here rather than summarised, because the appropriate level of
+scrutiny depends on knowing it: the model wrote most of the analysis code in
+`src/` and `scripts/`, drafted and revised most of this manuscript, and both
+found and introduced errors during development. Several defects reported in
+Appendix A were introduced by the model and later caught by it or by review;
+others were caught only because an independent audit looked for them.
+
+All hypotheses, analytical decisions and interpretations are the author's. The
+gene sets were frozen before any result was viewed, and the deviations in
+Appendix A record every departure from that plan.
+
+The verification apparatus described above exists partly because of this.
+Machine-generated analysis code makes a plausible-looking wrong number easy to
+produce and hard to notice, so the manuscript is checked against its artifacts
+by `check_paper_numbers.py` rather than by reading, the artifacts are checked
+against a single code state by `audit_provenance.py`, and every citation is
+resolved against Crossref. Those gates run on every regeneration and each is
+reproducible from the repository. The author has verified the claims in this
+manuscript against those artifacts and takes full responsibility for its
+content. No AI system is listed as an author; authorship entails accountability
+that a model cannot hold.
+
 ## 7. Ethics
 
 Secondary analysis of two publicly released datasets. Ethical approval and
@@ -918,7 +943,17 @@ Atlas is described in Hawrylycz et al. (2012).
 
 ## 8. Funding and competing interests
 
-`[TODO]` — to be declared before submission.
+**Funding.** This research received no specific grant from any funding agency in
+the public, commercial, or not-for-profit sectors. Compute was provided from the
+author's own resources.
+
+**Competing interests.** The author is developing a prototype tool that applies
+the detectability framework described here to assess, in advance, whether a
+proposed comparison between molecular and neuroimaging datasets is statistically
+tractable (nerv-analytica.ai). It is at an early stage and is not commercially
+available, but it constitutes a potential future financial interest in this
+work's reception and is declared on that basis. The software underlying the
+framework is released openly (§6). No other competing interests are declared.
 
 ---
 
