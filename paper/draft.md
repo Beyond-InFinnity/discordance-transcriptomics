@@ -1,10 +1,15 @@
 # Vascular gene expression predicts cortical oxygen extraction; its link to BOLD–CMRO₂ discordance is below current detection limits
 
+**Connor Mark Finnerty**<sup>1</sup>
+
+<sup>1</sup> Independent Researcher, Somerville, Massachusetts, United States
+
+ORCID: [0009-0008-4439-3471](https://orcid.org/0009-0008-4439-3471)
+Correspondence: infinnity12@gmail.com
+
 **Working draft.** Every number is generated from `results/` at git `552619b`,
 which passes `scripts/audit_provenance.py` 6/6, and is machine-verified against
-those artifacts by `scripts/check_paper_numbers.py`. Every analysis is complete;
-what remains before submission is the author block and affiliation (§8 declares
-funding and competing interests; the byline is not yet written).
+those artifacts by `scripts/check_paper_numbers.py`. Every analysis is complete.
 
 ---
 
